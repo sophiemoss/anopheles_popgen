@@ -1,2 +1,2 @@
-# anophlesmelas_popgen
+# anophelesmelas_popgen
 Anopheles melas population genomic analysis
