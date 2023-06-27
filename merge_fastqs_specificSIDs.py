@@ -18,7 +18,6 @@ def get_fastq_files(folders, subset_id, read_suffix):
         fastq_files.extend(glob.glob(pattern, recursive=True))
     return fastq_files
 
-
 # This code checks if the number of command line arguments is less than 4. If so, it means the required arguments are not provided, 
 # and it prints an example command for the user. 
 # Otherwise, it creates variables folders_flag and subset_id_flag which are empty, ready to store the command line flag values. 
