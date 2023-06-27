@@ -4,8 +4,8 @@
 
 ls *_1.fastq.gz | sed 's/_1.fastq.gz//' > fastq2vcfsamples.txt
 
-cat fastq2vcfsamples.txt | parallel -j 60 \
+cat fastq2vcfsamples.txt | parallel -j 45 \
 "fastq2vcf.py all --read1 {}_1.fastq.gz --read2 {}_2.fastq.gz \
---ref /Anopheles_gambiae.AgamP4.dna.toplevel.fa \
+--ref Anopheles_gambiae.AgamP4.dna.toplevel.fa \
 --prefix {}" > fastq2vcf_log.txt 2>&1
 
