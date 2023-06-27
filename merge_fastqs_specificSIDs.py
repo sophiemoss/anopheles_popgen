@@ -48,8 +48,7 @@ for i in range(1, len(sys.argv)):
 # Next, it creates the output file name based on the subset ID and read suffix. 
 # It constructs the shell command to concatenate the files using cat and redirects the output to the output file. 
 # Finally, it executes the command using subprocess.run and prints a message indicating the successful merge or the absence of files for that specific subset ID and read suffix.
-
-If no subset IDs are provided, it prints a message stating that subset IDs were not provided
+# If no subset IDs are provided, it prints a message stating that subset IDs were not provided
 
 if subset_ids:
     for subset_id in subset_ids:
