@@ -15,6 +15,9 @@
 #then divide these by 4 to find the total number of paired reads
 
 
+ls *.g.vcf.gz | sed 's/.g.vcf.gz//' > fastq2vcfsamples.txt
+
+
 ## After running the fastq2matrix pipeline we can extract information from these files to gain an idea of their quality.
 ## We are interested in:
 ## Number of reads
@@ -32,9 +35,17 @@ ls *.mkdup.bamstats | xargs -i -P1 sh -c 'head -1 {} | awk -F '"'"' '"'"' '"'"'{
 #ls *.bqsr.bamstats | xargs -i -P1 sh -c 'head -1 {} | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > total_reads
 
 # Number of reads mapping to reference genome
-# Same principle, but extracting the first item on the 5th line
+# Same principle, but extracting the first item on the 7th line
 
-ls *.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > mapped_reads
+#for some files
+ls *.mkdup.bamstats| xargs -i -P1 sh -c 'head -7 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > mapped_reads
+
+#for Jody recombined samples this is line 5 for some reason: bu1025, bu1035, bu1037, so1008, so1016
+ls bu1025.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > bu1025_mapped_reads
+ls bu1035.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > bu1035_mapped_reads
+ls bu1037.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > bu1037_mapped_reads
+ls so1008_Combined.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > so1008_mapped_reads
+ls so1016.mkdup.bamstats| xargs -i -P1 sh -c 'head -5 {} | tail -1 | awk -F '"'"' '"'"' '"'"'{print $1}'"'"'' > so1016_mapped_reads
 
 # Look at coverage as a %
 # Step 1 - Create a list of all the sample names, you just want the prefix
@@ -67,7 +78,6 @@ ls *.coverage | parallel --keep-order -j 60 --bar 'cat {} | awk '"'"'{if($3>=5)p
 ls *.coverage | parallel --keep-order -j 60 --bar 'cat {} | awk '"'"'{if($3>=10)print}'"'"' | wc -l' > coverage_10
 ls *.coverage | parallel --keep-order -j 60 --bar 'cat {} | awk '"'"'{if($3>=20)print}'"'"' | wc -l' > coverage_20
 
-## From Matt
 ## Code to look at what the coverage is of wgs data by looking at the bam file and create coverage plots across genome
 
 ## Check coverage as an average read depth across entire genome
