@@ -3,8 +3,10 @@
 ## It will then match the fastq files and combine them, making sure that the correct fastqs combine with eachother so that all read names in the forward and reverse files are the same
 ## Jody Phelan created this script
 ## To run this script, use:
-## python ~/combine_fastqs.py --dir /mnt/storage11/sophie/bijagos_mosq_wgs/mosq_raw_data/melas_2019/raw_fastq_files --r1 "(bu1035).+_1.fastq.gz" --r2 "(bu1035).+_2.fastq.gz"
+## python ~/combine_fastqs.py --dir ../ --r1 "(bu1035).+_1.fastq.gz" --r2 "(bu1035).+_2.fastq.gz"
 ## replace bu1035 with the sample of interest that needs combining
+## python /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/combine_fastqs.py --dir /mnt/storage11/sophie/bijagos_mosq_wgs/globalmelasfq2vcf/SAMN01760622_multipleSRRs --r1 "(SAMN01760622).+_1.fastq.gz" --r2 "(SAMN01760622).+_2.fastq.gz"
+
 
 
 import re

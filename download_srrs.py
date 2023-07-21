@@ -1,3 +1,8 @@
+## this python script is designed to download a set of SRR numbers in a file called srr.txt
+## where each srr number is on a different line
+## to run the script, go to the dir where you want to download the files and use the command
+## python /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/download_srrs.py
+
 import subprocess
 
 # Read the SRR numbers from the file 'srrs.txt' and store them in a list
