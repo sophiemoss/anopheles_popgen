@@ -1,5 +1,5 @@
-##step 1, change vcf to hdf5 file for using scikit allel downstream
-
+## Step 1: IPYRAD filtering vcf to remove indels and split multiallelic sites into multiple biallelic sites, and convert to hdf5 file
+## https://ipyrad.readthedocs.io/en/stable/API-analysis/cookbook-pca.html
 conda activate scikit
 
 mamba install ipyrad -c bioconda
@@ -7,16 +7,22 @@ mamba install htslib -c bioconda
 mamba install bcftools -c bioconda
 mamba install vcftools -c bioconda
 
+## 
+
 python
-import ipyrad.analysis as ipa
+
 import pandas as pd
+import h5py
+import ipyrad.analysis as ipa
+import matplotlib.pyplot as plt
 
 # remove INDELS with bcftools
 
 vcftools --gzvcf gambiae_nov2022.2023_07_05.genotyped.vcf.gz --remove-indels --recode --recode-INFO-all --out SNPS_only_gambiae_nov2022.2023_07_05.genotyped > vcftoolsfilter_log.txt 2>&1
 
-#or use bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, keeping this information
-# -m2 is used in conjunction with -M2 to apply the minor-allele-based decomposition. This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
+# or use bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, keeping this information
+# -m2 is used in conjunction with -M2 to apply the minor-allele-based decomposition. 
+# This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
 # here -v tells bcftools to only view SNPS, so indels are excluded
 
 bcftools view -M2 -m2 -v snps gambiae_nov2022.2023_07_05.genotyped.vcf.gz > bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
@@ -38,13 +44,6 @@ dfchunks = pd.read_csv(
 # show first few rows of first dataframe chunk
 next(dfchunks).head()
 
-#convert to hdf5 and then go through filtering steps with scikit allel workflow.
-# instructions found here https://ipyrad.readthedocs.io/en/latest/API-analysis/cookbook-vcf2hdf5.html
-
-import pandas as pd
-import h5py
-import ipyrad.analysis as ipa
-
 # init a conversion tool
 converter = ipa.vcf_to_hdf5(
     name="Gambiae2022_LD20K",
@@ -55,16 +54,28 @@ converter = ipa.vcf_to_hdf5(
 # run the converter
 converter.run()
 
+
+## STEP 2: Conduct PCA and plot using the hdf5 file
+
+import pandas as pd
+import h5py
+import ipyrad.analysis as ipa
+import matplotlib.pyplot as plt
+
+# look at the structure of the hdf5 file using nexusformat
+# pip install nexusformat
+
+import nexusformat.nexus as nx
+f = nx.nxload(‘myhdf5file.hdf5’)
+print(f.tree)
+
 # init a PCA tool and filter to allow no missing data
 pca = ipa.pca(
     data="./bi_Gambiae2022_LD20K.snps.hdf5",
     mincov=1.0,
-)
+    )
 
-##
-https://ipyrad.readthedocs.io/en/stable/API-analysis/cookbook-pca.html
-
-import toyplot
+# sort samples using imap
 
 imap = {
     "sus": ["NG-33833_sus10_lib708284_10265_1", "NG-33833_sus18_lib708285_10265_1", "NG-33833_sus1_lib708279_10265_1", "NG-33833_sus25_lib708286_10265_1",
@@ -94,6 +105,50 @@ df.to_csv("pca_analysis.csv")
 df.iloc[:10, :10].round(2)
 
 pca.draw(0, 2); #why is this not displaying in VSC?
+plt.show() # ensure the plot remains shown
+
+#######################
+# trying http://alimanfoo.github.io/2015/09/28/fast-pca.html
+
+
+import h5py
+
+# Assuming callset is an HDF5 file
+with h5py.File('./bi_Gambiae2022_LD20K.snps.hdf5', 'r') as f:
+    # Print the keys at the root level
+    print("Keys at root level:", list(f.keys()))
+
+    # If there is a group called '2L' in the HDF5 file, you can check its keys as well
+    if '2L' in f:
+        print("Keys under '2L':", list(f['2L'].keys()))
+    else:
+        print ("No 2L")
+
+# problem might be because the data is not phased before it is being converted into an hdf5 file.
+
+
+
+import gcsfs
+
+
+## Malariagen snp-genotyping-vector.md pipeline
+
+# The GCS URI to the file you want to download
+gcs_uri = "gs://vo_agam_production/resources/observatory/ag.allsites.nonN.vcf.gz"
+
+# Create a GCS filesystem object
+gcs_filesystem = gcsfs.GCSFileSystem()
+
+# Download the file to a destination
+destination_file_name = "/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps/"
+with gcs_filesystem.open(gcs_uri, "rb") as gcs_file, open(destination_file_name, "wb") as local_file:
+    local_file.write(gcs_file.read())
+
+print("File downloaded successfully.")
+
+## permission was denied to download this file from google cloud storage.
+
+
 
 
 
@@ -106,7 +161,3 @@ pca.draw(0, 2); #why is this not displaying in VSC?
 # normalise and then use minimum allele depth, bcftools norm 
 # holly example: bcftools norm -m - AnS_0623.filter.chr.vcf.gz -Oz -o AnS_0623.namulti.vcf.gz -> remove multiallelic sites
 # core genome. Holly did a bed file for the chromosomes, and also a bed file for the genes of interest for faster analysis
-
-
-
-
