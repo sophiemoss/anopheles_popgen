@@ -1,5 +1,7 @@
-## Step 1: IPYRAD filtering vcf to remove indels and split multiallelic sites into multiple biallelic sites, and convert to hdf5 file
+## Step 1: Filtering vcf to remove indels and split multiallelic sites into multiple biallelic sites, and convert to hdf5 file
+## Use http://alimanfoo.github.io/2017/06/14/read-vcf.html instead of ipyrad to make hdf5 file
 ## https://ipyrad.readthedocs.io/en/stable/API-analysis/cookbook-pca.html
+
 conda activate scikit
 
 mamba install ipyrad -c bioconda
@@ -16,11 +18,7 @@ import h5py
 import ipyrad.analysis as ipa
 import matplotlib.pyplot as plt
 
-# remove INDELS with bcftools
-
-vcftools --gzvcf gambiae_nov2022.2023_07_05.genotyped.vcf.gz --remove-indels --recode --recode-INFO-all --out SNPS_only_gambiae_nov2022.2023_07_05.genotyped > vcftoolsfilter_log.txt 2>&1
-
-# or use bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, keeping this information
+# remove INDELS with bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, keeping this information
 # -m2 is used in conjunction with -M2 to apply the minor-allele-based decomposition. 
 # This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
 # here -v tells bcftools to only view SNPS, so indels are excluded
@@ -34,26 +32,30 @@ bgzip bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
 tabix -p vcf bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
 # load the VCF as an dataframe
-dfchunks = pd.read_csv(
-    "bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz",
-    sep="\t",
-    skiprows=1000,
-    chunksize=1000,
-)
+#dfchunks = pd.read_csv(
+ #   "bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz",
+ #   sep="\t",
+  #  skiprows=1000,
+   # chunksize=1000,
+#)
 
 # show first few rows of first dataframe chunk
-next(dfchunks).head()
+#next(dfchunks).head()
 
 # init a conversion tool
-converter = ipa.vcf_to_hdf5(
-    name="Gambiae2022_LD20K",
-    data="bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz",
-    ld_block_size=20000,
-)
+#converter = ipa.vcf_to_hdf5(
+ #   name="Gambiae2022_LD20K",
+  #  data=",
+   # ld_block_size=20000,
+#)
 
 # run the converter
-converter.run()
+#converter.run()
 
+## Use this instead to make the hdf5 file
+
+allel.vcf_to_hdf5('example.vcf', 'example.h5', fields='*', overwrite=True)
+http://alimanfoo.github.io/2017/06/14/read-vcf.html
 
 ## STEP 2: Conduct PCA and plot using the hdf5 file
 
@@ -100,7 +102,7 @@ df = pd.DataFrame(pca.pcaxes[0], index=pca.names)
 
 # write the PC axes to a CSV file
 df.to_csv("pca_analysis.csv")
-
+/eca-bioinf-handbook/bioinformatics-for-rad-seq-data-with-and-without-a-reference-genome.html
 # show the first ten samples and the first 10 PC axes
 df.iloc[:10, :10].round(2)
 
@@ -125,6 +127,69 @@ with h5py.File('./bi_Gambiae2022_LD20K.snps.hdf5', 'r') as f:
         print ("No 2L")
 
 # problem might be because the data is not phased before it is being converted into an hdf5 file.
+# problem seems to be because the chromosome names are weird - in hf5 file they all start with b
+
+# filter out the contigs from the VCF file, note that to produce a properly bgzipped vcf file you need the -Oz flag
+
+bcftools view bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --regions 2L,2R,3L,3R,Mt,X,Y_unplaced | bcftools sort -Oz -o bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+# view the unique chromosome names
+bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | sort | uniq > unique_chromosomes_filtered.txt
+
+# now the vcf file only contains chromosomes of interest, make hdf5 file 
+# allel.vcf_to_hdf5('example.vcf', 'example.h5', fields='*', overwrite=True)
+
+allel.vcf_to_hdf5('bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz', 'bi_snps_chr_gamboae_nov2022.h5', fields='*', overwrite=True)
+
+## when I produce the hdf5 file the chr names go funky which stops the downstream stuff
+## When converting a VCF file to an HDF5 file using allel.vcf_to_hdf5(), 
+## the default behavior of h5py is to encode text strings as byte-strings (bytes) for efficient 
+## storage and handling of different character encodings. 
+## to use hf5 I need to be able to decode these strings
+
+## Making PCA without converting to hf5, using VCF file instead.
+
+import allel
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load the VCF file
+vcf_path = 'bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz'
+gn = allel.read_vcf(vcf_path, fields=['calldata/GT'], numbers={'calldata/GT': 2})
+
+# Reshape genotype data to 2D array
+gn_2d = gn['calldata/GT'].reshape(gn['calldata/GT'].shape[0], -1)
+
+# Find indices of NaN values
+nan_indices = np.isnan(gn_2d)
+
+# Remove rows with NaN values
+gn_2d_cleaned = gn_2d[~np.any(nan_indices, axis=1)]
+
+#Convert the data type to float64 for the allel package
+gn_2d_cleaned = gn_2d_cleaned.astype(np.float64)
+
+# Perform PCA
+n_components = 2
+pca_results = allel.pca(gn_2d_cleaned, n_components=n_components, copy=True, scaler='biallelic_patterson', ploidy=2)
+
+# Extract PCA components
+pca_components = pca_results['pca']
+
+# Plot the first two principal components
+plt.figure(figsize=(10, 6))
+plt.scatter(pca_components[:, 0], pca_components[:, 1], alpha=0.5)
+plt.title('PCA Plot')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.show()
+
+
+
+
+
+
+
 
 
 
@@ -147,8 +212,6 @@ with gcs_filesystem.open(gcs_uri, "rb") as gcs_file, open(destination_file_name,
 print("File downloaded successfully.")
 
 ## permission was denied to download this file from google cloud storage.
-
-
 
 
 
