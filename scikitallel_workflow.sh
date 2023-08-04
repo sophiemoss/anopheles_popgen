@@ -18,7 +18,8 @@ import h5py
 import ipyrad.analysis as ipa
 import matplotlib.pyplot as plt
 
-# remove INDELS with bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, keeping this information
+# remove INDELS with bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, 
+# keeping this information
 # -m2 is used in conjunction with -M2 to apply the minor-allele-based decomposition. 
 # This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
 # here -v tells bcftools to only view SNPS, so indels are excluded
@@ -31,33 +32,12 @@ bgzip bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
 # tabix index the compressed VCF file, creates .vcf.gz.tbi
 tabix -p vcf bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
-# load the VCF as an dataframe
-#dfchunks = pd.read_csv(
- #   "bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz",
- #   sep="\t",
-  #  skiprows=1000,
-   # chunksize=1000,
-#)
+## Make hdf5 file
 
-# show first few rows of first dataframe chunk
-#next(dfchunks).head()
-
-# init a conversion tool
-#converter = ipa.vcf_to_hdf5(
- #   name="Gambiae2022_LD20K",
-  #  data=",
-   # ld_block_size=20000,
-#)
-
-# run the converter
-#converter.run()
-
-## Use this instead to make the hdf5 file
-
-allel.vcf_to_hdf5('example.vcf', 'example.h5', fields='*', overwrite=True)
+allel.vcf_to_hdf5('bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz', 'bi_snps_chr_gambiae_nov2022_v2.h5', fields='*', overwrite=True)
 http://alimanfoo.github.io/2017/06/14/read-vcf.html
 
-## STEP 2: Conduct PCA and plot using the hdf5 file
+## STEP 2: Conduct PCA and plot using the hdf5 file - IPYRAD METHOD
 
 import pandas as pd
 import h5py
@@ -92,6 +72,8 @@ imap = {
     "5xres": ["NG-33833_5xres1_lib708243_10265_1", "NG-33833_5xres2_lib708244_10265_1"]
 }
 
+
+
 # require that 50% of samples have data in each group
 minmap = {i: 0.5 for i in imap}
 
@@ -109,25 +91,7 @@ df.iloc[:10, :10].round(2)
 pca.draw(0, 2); #why is this not displaying in VSC?
 plt.show() # ensure the plot remains shown
 
-#######################
-# trying http://alimanfoo.github.io/2015/09/28/fast-pca.html
-
-
-import h5py
-
-# Assuming callset is an HDF5 file
-with h5py.File('./bi_Gambiae2022_LD20K.snps.hdf5', 'r') as f:
-    # Print the keys at the root level
-    print("Keys at root level:", list(f.keys()))
-
-    # If there is a group called '2L' in the HDF5 file, you can check its keys as well
-    if '2L' in f:
-        print("Keys under '2L':", list(f['2L'].keys()))
-    else:
-        print ("No 2L")
-
-# problem might be because the data is not phased before it is being converted into an hdf5 file.
-# problem seems to be because the chromosome names are weird - in hf5 file they all start with b
+## Removing contigs and then making h5 file
 
 # filter out the contigs from the VCF file, note that to produce a properly bgzipped vcf file you need the -Oz flag
 
@@ -138,15 +102,13 @@ bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vc
 
 # now the vcf file only contains chromosomes of interest, make hdf5 file 
 # allel.vcf_to_hdf5('example.vcf', 'example.h5', fields='*', overwrite=True)
+import h5py
+allel.vcf_to_hdf5('bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz', 'bi_snps_chr_gamboae_nov2022_v2.h5', fields='*', overwrite=True)
 
-allel.vcf_to_hdf5('bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz', 'bi_snps_chr_gamboae_nov2022.h5', fields='*', overwrite=True)
-
-## when I produce the hdf5 file the chr names go funky which stops the downstream stuff
 ## When converting a VCF file to an HDF5 file using allel.vcf_to_hdf5(), 
 ## the default behavior of h5py is to encode text strings as byte-strings (bytes) for efficient 
 ## storage and handling of different character encodings. 
 ## to use hf5 I need to be able to decode these strings
-
 ## Making PCA without converting to hf5, using VCF file instead.
 
 import allel
@@ -188,6 +150,7 @@ plt.show()
 
 
 
+# trying http://alimanfoo.github.io/2015/09/28/fast-pca.html
 
 
 
@@ -218,6 +181,21 @@ print("File downloaded successfully.")
 
 ## some of the analyses want a zarr file
 
+
+
+
+## creating conda enviroment that will work for h5 files
+
+conda create -n scikit3 python=3.5
+pip install h5py==2.10.0
+mamba install scikit-allel==1.0.3 #need python 3.5 for this but apparently python needs upating as is depreciated
+mamba install ipython
+
+
+conda create -n scikit2 python=3.6
+pip install h5py==2.10.0
+mamba install scikit-allel
+mamba install ipython
 
 # or continue filtering as Holly did for:
 # missingness
