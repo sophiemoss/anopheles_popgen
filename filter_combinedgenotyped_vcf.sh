@@ -120,7 +120,6 @@ tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.
 # Phase the filtered vcf using beagle, https://faculty.washington.edu/browning/beagle/beagle_5.2_13Oct21.pdf
 # could also use phasing pipeline from malariagen. Have a look at this, and understand gatk parameters above.
 
-conda install -c bioconda beagle-lib
-mamba install beagle-lib
+mamba install beagle
 
 java –Xmx50g –jar beagle.jar gt=miss40_mac_gatkfilters_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
