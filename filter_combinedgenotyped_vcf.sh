@@ -1,4 +1,4 @@
-# filtering of combined genotyped vcf file
+# FILTERING OF COMBINED GENOTYPED VCF
 
 # FILTER 1: remove INDELS with bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, 
 # keeping this information
@@ -17,6 +17,9 @@ tabix -p vcf bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 # filter out the contigs from the VCF file, note that to produce a properly bgzipped vcf file you need the -Oz flag
 
 bcftools view bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --regions 2L,2R,3L,3R,Mt,X,Y_unplaced | bcftools sort -Oz -o bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+# view the unique chromosome names
+bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | sort | uniq > unique_chromosomes_filtered.txt
 
 tabix -p vcf bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
@@ -88,12 +91,13 @@ bcftools view -H DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.gen
 bcftools view -H gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
 36016533
 
+## FILTER 6
 ## Remove variants with a high amount of missing genotypes and filter on minor allele frequency
 ## The data set overall will now have lots of missing data. 
 ## This is because we set genotypes with low quality and low read depth to missing. 
 ## Therefore we will now remove all variants that have more than 20% missing genotypes or MAF < 0.01
 ## Filtering for MAF 0.01 means that remaining sites in the VCF have a minimum minor allele frequency of 1%
-##  This dataset includes 44 individuals (thus maximally 88 alleles per site). If we filter for MAF 0.01, 
+## This dataset includes 44 individuals (thus maximally 88 alleles per site). If we filter for MAF 0.01, 
 ## a variant is excluded if its minor allele is found in less than 0.88 genotypes (1% of 88). 
 ## This would remove alleles where the minor allele occurs 0.88 times or less, which for this set means a 
 ## variant would be removed if there are no minor alleles? So if there is no alternate allele the variant is removed.
@@ -104,9 +108,14 @@ bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.01' -O z -o F_MISSING_MAF_AC0_DP
 
 bcftools query F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz -f'%AC\n' | sort -g | head
 
-# Remember to index VCF after each stage.
-# Filtering complete!
+# Final number of variants (SNPS) in dataset
 
+bcftools view -H F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
+17085002
+
+tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+# Filtering complete!
 
 # Phase the filtered vcf using beagle, https://faculty.washington.edu/browning/beagle/beagle_5.2_13Oct21.pdf
 # could also use phasing pipeline from malariagen. Have a look at this, and understand gatk parameters above.
@@ -114,4 +123,4 @@ bcftools query F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov202
 conda install -c bioconda beagle-lib
 mamba install beagle-lib
 
-java –Xmx50g –jar beagle.jar gt=miss40_mac_gatkfilters_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=phased
+java –Xmx50g –jar beagle.jar gt=miss40_mac_gatkfilters_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
