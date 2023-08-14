@@ -42,8 +42,40 @@ imap = {
 # view the unique chromosome names
 bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | sort | uniq > unique_chromosomes_filtered.txt
 
-# or continue filtering as Holly did for:
-# missingness
-# normalise and then use minimum allele depth, bcftools norm 
-# holly example: bcftools norm -m - AnS_0623.filter.chr.vcf.gz -Oz -o AnS_0623.namulti.vcf.gz -> remove multiallelic sites
-# core genome. Holly did a bed file for the chromosomes, and also a bed file for the genes of interest for faster analysis
+### FST- create genotype array
+
+import allel
+import numpy as np
+
+## check size of binary matrix in R
+## > count(snp)
+ #        n
+#1 17085002
+#> nrow(snp)
+#[1] 17085002
+#> ncol(snp)
+#[1] 45
+
+# Load your binary matrix as a NumPy array
+import numpy as np
+
+# Specify the path to your binary file
+binary_file_path = "F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.mat.bin"
+
+# Specify the data type used in your binary matrix
+dtype = np.uint8
+dtype='i1'
+
+# Load and reshape the binary data
+binary_matrix = np.fromfile(binary_file_path, dtype=dtype)
+
+# Convert NumPy array to GenotypeArray
+genotypes = allel.GenotypeArray(binary_matrix)
+
+# TypeError: bad number of dimensions: expected 3; found 1
+
+import allel
+g = allel.GenotypeArray(F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.mat.
+    ...: bin, dtype='i1')
+g.dtype
+dtype('int8')

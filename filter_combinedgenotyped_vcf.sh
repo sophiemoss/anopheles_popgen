@@ -1,4 +1,5 @@
 # FILTERING OF COMBINED GENOTYPED VCF
+# same filters used for both gambiae pipeline and melas pipeline
 
 # FILTER 1: remove INDELS with bcftools, here -M2 indicates that bcftools should split multi-allelic sites into multiple biallelic sites, 
 # keeping this information
@@ -6,9 +7,9 @@
 # This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
 # here -v tells bcftools to only view SNPS, so indels are excluded
 
-bcftools view -M2 -m2 -v snps gambiae_nov2022.2023_07_05.genotyped.vcf.gz > bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
+bcftools view -M2 -m2 -v snps gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
 
-# you must bgzip the file before indexing
+# you must bgzip the file before indexing if you did not use -Oz to make the output bgzip
 bgzip bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
 
 # tabix index the compressed VCF file, creates .vcf.gz.tbi
@@ -23,7 +24,7 @@ bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vc
 
 tabix -p vcf bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
-# FILTER 2: Filter samples to keep those with 40% of genome with > 10x coverage, and min-ac=1 so that all variants that remain are still variants after sample removal
+# FILTER 2: Filter samples to keep those with 4'0% of genome with > 10x coverage, and min-ac=1 so that all variants that remain are still variants after sample removal
 # I have identified samples that are above this threshold using my basic WGS stats
 # create file with samples to keep: sample_40_10.txt
 
@@ -47,6 +48,10 @@ gatk VariantFiltration \
 -filter "MQRankSum < -12.5" --filter-name "MQRankSum-12.5" \
 -filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
 -O gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+## note there is a repeated warning here JEXL engine undefined variable, not a problem
+## because this is coming from where there are positions with no coverage
+## https://gatk.broadinstitute.org/hc/en-us/community/posts/4408733963803-GATK-Variant-Filtration-undefined-variable
 
 tabix -p vcf gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
@@ -111,7 +116,9 @@ bcftools query F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov202
 # Final number of variants (SNPS) in dataset
 
 bcftools view -H F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
-17085002
+
+# gambiae 17085002
+# melas   11121182 
 
 tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
@@ -122,4 +129,15 @@ tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.
 
 mamba install beagle
 
-java –Xmx50g –jar beagle.jar gt=miss40_mac_gatkfilters_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
+beagle -Xmx500g gt=F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
+
+##gambie error
+1569759 now,
+17085002 before
+
+##melas running with 200g - phased is now 511726 lines
+
+# 500g of memory is an insane amount, half the entire server, for some reason it would not run without specifying this
+# next time try to use less but also make sure nobody needs it if using
+# it did only take 14 minutes to run but it has removed all annotations and it smaller by a factor of 10
+# spoken to Joe and Emilia, neither of them have used Beagle or know why it is doing this. Speak to Jody. 
