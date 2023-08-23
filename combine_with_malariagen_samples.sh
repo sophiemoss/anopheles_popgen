@@ -5,6 +5,8 @@ cat fastq2vcfsamples.txt | parallel -j 20 \
 --ref GCF_000005575.2_AgamP3_genomic.fasta \
 --prefix {}" > fastq2vcf_AgamP3_log.txt 2>&1
 
+########## MALARIAGEN DATA ##################
+
 ## downloaded vcfs from malariagen for Ag1000G
 wget ftp:'//ngs.sanger.ac.uk/production/ag1000g/phase2/AR1/variation/main/vcf/all/*.vcf.gz'
 
