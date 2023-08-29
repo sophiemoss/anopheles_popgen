@@ -131,13 +131,18 @@ mamba install beagle
 
 beagle -Xmx500g gt=F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
 
-##gambie error
-1569759 now,
-17085002 before
+## Check the number of SNPs in the phased and unphased VCF files
 
-##melas running with 200g - phased is now 511726 lines
+## unphased melas
+bcftools query -f '%CHROM\t%POS\n' F_MISSING_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_melas_2019_plusglobal.2023_07_05.genotyped.vcf.gz | awk '$1=="2L"' | wc -l
+2774854
+## phased
+bcftools query -f '%CHROM\t%POS\n' 2019_melas_phased.vcf.gz | awk '$1=="2L"' | wc -l
+2774854
 
-# 500g of memory is an insane amount, half the entire server, for some reason it would not run without specifying this
-# next time try to use less but also make sure nobody needs it if using
-# it did only take 14 minutes to run but it has removed all annotations and it smaller by a factor of 10
-# spoken to Joe and Emilia, neither of them have used Beagle or know why it is doing this. Speak to Jody. 
+## unphased gambiae
+bcftools query -f '%CHROM\t%POS\n' F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | awk '$1=="2L"' | wc -l
+4190559
+## phased
+bcftools query -f '%CHROM\t%POS\n' 2022gambiaevcfphased.vcf.gz | awk '$1=="2L"' | wc -l
+4190559

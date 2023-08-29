@@ -18,4 +18,4 @@ merge_vcfs.py genotype --ref GCF_000005575.2_AgamP3_genomic.fasta --prefix gambi
 # concerned that this genotyping does not use a set of validated variants like I had for plasmodium
 # this has a genotyping pipeline:
 # https://github.com/malariagen/pipelines/blob/v0.0.4/docs/specs/snp-genotyping-vector.md
-# show Jody pipeline from malariagen
+# pipeline being sent from MalariaGEN.
