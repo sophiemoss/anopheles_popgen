@@ -18,16 +18,9 @@ os.getcwd()
 ## have now phased VCFs using beagle
 
 import numpy as np
-np.__version__
-
 import allel
-allel.__version__
-
 import zarr
-zarr.__version__
-
 import pandas as pd
-pd.__version__
 
 ## convert phased, filtered, VCF file to zarr file
 # %%
@@ -62,9 +55,11 @@ gt_res_samples
 
 # %%
 ## select variants that are segregating within res_samples as only these will be informative
+## also some selection tests don't support multiallelic variants, so just keep biallelics
+## for this pipeline the VCF is already filtered so should be no biallelic SNPs anyway
 
 ac_res = gt_res_samples.count_alleles(max_allele=8).compute()
-res_seg_variants = ac_res.is_segregating()
+res_seg_variants = ac_res.is_segregating() & ac_res.is_biallelic_01()
 ac_res_seg = ac_res.compress(res_seg_variants, axis=0)
 gt_res_seg = gt_res_samples.compress(res_seg_variants, axis = 0)
 gt_res_seg
@@ -111,7 +106,7 @@ ax.set_ylabel('Frequency (no. variants)');
 
 ihs_res_std = allel.standardize_by_allele_count(ihs_res_raw, ac_res_seg[:, 1])
 
-# %% 
+# %% Here I am having to deviate from the Jupyter notebok and use ihs_res_std[0] 
 fig, ax = plt.subplots()
 ax.hist(ihs_res_std[0][~np.isnan(ihs_res_std[0])], bins=20)
 ax.set_xlabel('Standardized IHS')
@@ -185,7 +180,7 @@ with open("res_ihs_positions_above_threshold_5.txt", "w") as file:
     for position in res_ihs_positions_above_threshold_5:
         file.write(str(position) + "\n")
 
-# %% SUSCEPTIBLE POPULATION
+# %% ##################### SUSCEPTIBLE POPULATION #################
 
 ### Now analyse iHS in susceptible population
 
@@ -202,7 +197,7 @@ gt_sus_samples
 ## select variants that are segregating within sus_samples as only these will be informative
 
 ac_sus = gt_sus_samples.count_alleles(max_allele=8).compute()
-sus_seg_variants = ac_sus.is_segregating()
+sus_seg_variants = ac_sus.is_segregating() & ac_sus.is_biallelic_01()
 ac_sus_seg = ac_sus.compress(sus_seg_variants, axis=0)
 gt_sus_seg = gt_sus_samples.compress(sus_seg_variants, axis = 0)
 gt_sus_seg
@@ -321,9 +316,7 @@ with open("sus_ihs_positions_above_threshold_5.txt", "w") as file:
     for position in sus_ihs_positions_above_threshold_5:
         file.write(str(position) + "\n")
 
-
-# %%
-############# Cross-population extended haplotype homozygosity (XPEHH) ###########
+# %% ########### Cross-population extended haplotype homozygosity (XPEHH) ###########
 
 ## Compute the unstandardized cross-population extended haplotype homozygosity score (XPEHH) for each variant.
 ## allel.xpehh(h1, h2, pos, map_pos=None, min_ehh=0.05, include_edges=False, gap_scale=20000, max_gap=200000, is_accessible=None, use_threads=True)
@@ -331,7 +324,7 @@ with open("sus_ihs_positions_above_threshold_5.txt", "w") as file:
 
 
 # %%
-## this is from a phased VCF so we can convert this genotype array to haplotype array
+## VCF is phased so we can convert genotype arrays made earlier to haplotype array
 
 h_sus = gt_sus_samples.to_haplotypes().compute()
 h_sus
@@ -342,19 +335,22 @@ h_res
 ac_gt = gt.count_alleles(max_allele=8).compute()
 
 # %%
-
 # get variant positions
 
-pos = callset['variants/POS']
+pos = callset['variants/POS'][:]
+pos
 
 # %% look at shapes of arrays
 print("h_sus shape:", h_sus.shape)
 print("h_res shape:", h_res.shape)
+print("pos shape", pos.shape)
 
 # %% compute xpehh
 # xpehh_raw = allel.xpehh(h_sus, h_res, pos, map_pos=None, min_ehh=0.05, include_edges=False, gap_scale=20000, max_gap=20000, is_accessible=None, use_threads=True)
 
-xpehh_raw = allel.xpehh(h_sus, h_res, pos, map_pos=None, include_edges=True, use_threads=True)
+# xpehh_raw = allel.xpehh(h_sus, h_res, pos, map_pos=None, include_edges=True, use_threads=True)
+xpehh_raw = allel.xpehh(h_sus, h_res, pos, use_threads=True)
+xpehh_raw
 
 # %% look for where the biggest signal is
 xpehh_hit_max = np.nanargmax(xpehh_raw)
@@ -374,35 +370,71 @@ ax.hist(xpehh_raw[~np.isnan(xpehh_raw)], bins=20)
 ax.set_xlabel('Raw XP-EHH')
 ax.set_ylabel('Frequency (no. variants)');
 
-# %% Standardize XP-EHH
+# %% Standardize XP-EHH - do not think that we really need to do this
 
-xpehh_std = allel.standardize_by_allele_count(xpehh_raw, ac_gt[:, 1])
+# xpehh_std = allel.standardize_by_allele_count(xpehh_raw, ac_gt[:, 1])
 
 # %% 
-fig, ax = plt.subplots()
-ax.hist(xpehh_std[0][~np.isnan(xpehh_std[0])], bins=20)
-ax.set_xlabel('Standardized XP-EHH')
-ax.set_ylabel('Frequency (no. variants)');
+#fig, ax = plt.subplots()
+#ax.hist(xpehh_std[0][~np.isnan(xpehh_std[0])], bins=20)
+#ax.set_xlabel('Standardized XP-EHH')
+#ax.set_ylabel('Frequency (no. variants)');
 
 # %% note that iHS has been calculated with unpolarized data, so only the magnitude of iHS
 # is informative, not the sign.
-xpehh_std
+# xpehh_std
 
 # %% look at shapes
 
 print("pos shape:", pos.shape)
 print("xpehh_raw shape:", xpehh_raw.shape)
 
+min_pos = pos.min()
+max_pos = pos.max()
+
+print("Minimum Genomic Position:", min_pos)
+print("Maximum Genomic Position:", max_pos)
+
+
 # %% plot on manhattan plot
 
 fig, ax = plt.subplots(figsize=(10, 3))
-ax.plot(pos[0], np.abs(xpehh_raw[0]), linestyle=' ', marker='o', mfc='none', mew=3, mec='k', label='$|XP-EHH|$')
-ax.axhline(y=5, color='red', linestyle='--')
+ax.plot(pos, np.abs(xpehh_raw), linestyle=' ', marker='o', mfc='none', mew=3, mec='k', label='$|XP-EHH|$')
+ax.axhline(y=4, color='red', linestyle='--')
 ax.set_xlabel('Genomic position (bp)')
 ax.set_ylabel('$|XP-EHH|$')
-ax.set_ylim(-1, 1)
-ax.set_xlim(0,200000)
+ax.set_ylim(0, 8)
+ax.set_xlim(0,61542681)
 ax.legend()
 
+# %% list all positions with iHS value over certain threshold
 
-# %%
+xpehh_positions_above_threshold_4 = pos[xpehh_raw >= 4]
+
+# Save positions_above_threshold to a text file
+with open("xpehh_positions_above_threshold_4", "w") as file:
+    for position in xpehh_positions_above_threshold_4:
+        file.write(str(position) + "\n")
+
+
+
+# %% ################################ TAJIMA'S D #####################################
+
+# allel.moving_delta_tajima_d(ac1, ac2, size, start=0, stop=None, step=None
+# compute the difference in Tajima's D between two populations in moving windows
+
+# create allele counts arrays ac1 and ac2
+# genotype arrays were made earlier in this script: gt_sus_samples and gt_res_samples
+
+ac_sus_samples = gt_sus_samples.count_alleles()
+ac_sus_samples
+
+ac_res_samples = gt_res_samples.count_alleles()
+ac_res_samples
+
+# %% compute tajima d
+
+allel.moving_delta_tajima_d(ac_sus_samples, ac_res_samples, size:2000)
+
+# %% 
+## haplotype networks - https://github.com/xgrau/ace1-anopheles-report/blob/master/s01b_haplotype_analysis_Ace1_2020-02-21b.ipynb
