@@ -430,8 +430,10 @@ ac_res_samples = gt_res_samples.count_alleles()
 ac_res_samples
 
 # %% compute tajima d
+# Compute the difference in Tajima’s D between two populations in moving windows.
+# calculate this in 100kb windows across each chromosome for each population???
 
-allel.moving_delta_tajima_d(ac_sus_samples, ac_res_samples, size:2000)
+tajimad = allel.moving_delta_tajima_d(ac_sus_samples, ac_res_samples, 2000)
 
 # %% 
 ## haplotype networks - https://github.com/xgrau/ace1-anopheles-report/blob/master/s01b_haplotype_analysis_Ace1_2020-02-21b.ipynb

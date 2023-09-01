@@ -245,6 +245,11 @@ for (start, end), max_fst in zip(window_positions, window_max_fst):
 # Find the maximum Fst value in snp_fst_wc_windowed
 max_fst_value = snp_fst_wc_windowed.max()
 
+# note that fst does not tell you the direction of selection, but high fst values indicate that
+# there is genetic differentiation at that point between the populations being compared
+# to understand the direction of selection, you can do additional analyses such as Tajimas D.
+
+
 # %% Also used vcftools to calculate Fst snp by snp, too.
 ## after filtering only kept 33 out of 42 individuals
 
@@ -279,3 +284,6 @@ CHROM   POS     WEIR_AND_COCKERHAM_FST
 # a: How much genetic diversity is there within a single group of individuals from the same population?
 # b: How different are the genetic traits between different groups of individuals (populations)?
 # c: Do certain genetic traits tend to appear together in similar patterns across different populations?
+
+
+### Plot in 100kb windows across each chromosome

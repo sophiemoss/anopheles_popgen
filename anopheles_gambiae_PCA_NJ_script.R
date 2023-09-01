@@ -9,7 +9,6 @@
 bcftools view -r 2L:2358158-2431617 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o VGSC_only_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
 
-
 ## Shift + Options + R to open a new terminal
 ## Ctrl + Option + Enter to send commands to terminal 
 ## ssh sophie@s11
