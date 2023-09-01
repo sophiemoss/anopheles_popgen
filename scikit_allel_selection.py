@@ -6,9 +6,6 @@
 # some selection tests only support biallelic variants, not multiallelic. 
 # This filtered VCF should already be biallelic SNPs only.
 
-### Need to use phased version for conversion to haplotype array for further selection analyses.
-# https://nbviewer.org/gist/alimanfoo/75b567b3d43810ef8eaef248b38b1c1c?flush_cache=true
-
 # %%
 import os
 os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
@@ -121,7 +118,7 @@ fig, ax = plt.subplots(figsize=(10, 3))
 ax.plot(pos_res_seg, np.abs(ihs_res_std[0]), linestyle=' ', marker='o', mfc='none', mew=.5, mec='k')
 ax.set_xlabel('Genomic position (bp)')
 ax.set_ylabel('$|IHS|$')
-ax.set_ylim(0, 9);
+ax.set_ylim(-2, 9);
 
 # %% look for where the biggest signal is
 idx_hit_max = np.nanargmax(ihs_res_std[0])
