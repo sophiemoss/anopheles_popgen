@@ -3,22 +3,24 @@
 conda activate scikit
 
 ######################## CALCULATING FST #########################
-## Set wd
+
 # %%
-import os
+import zarr
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+import seaborn as sns
+sns.set_style('white')
+sns.set_style('ticks')
+import pandas as pd
+import allel; print('scikit-allel', allel.__version__)
+
+# %% Set wd
 os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
 os.getcwd()
 
 # %% CONVERT FILTERED UNPHASED VCF TO ZARR FILE
-# Try to convert to zarr and use workflow here: https://nbviewer.org/gist/alimanfoo/75b567b3d43810ef8eaef248b38b1c1c?flush_cache=true
-
-import numpy as np
-import allel
-import zarr
-import numcodecs
-import pandas as pd
-
-# %% Note this is using unphased VCF to convert to zarr at the moment
+# Note this is using unphased VCF to convert to zarr at the moment
 # allel.vcf_to_zarr('example.vcf', 'example.zarr', fields='*', overwrite=True)
 # print('zarr', zarr.__version__, 'numcodecs', numcodecs.__version__)
 
@@ -26,92 +28,225 @@ callset = zarr.open('F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_
 callset.tree(expand=True)
 
 # %%  CONVERT ZARR FILE TO GENOTYPE ARRAY
+genotype_all = allel.GenotypeChunkedArray(callset['calldata/GT'])
+genotype_all
 
-gt = allel.GenotypeDaskArray(callset['calldata/GT'])
-print(gt.shape)
-gt
-#Out[25]: <GenotypeDaskArray shape=(17085002, 42, 2) dtype=int8>
+# %% load variant positions
+pos_all = callset['variants/POS'][:]
 
 # %%  IMPORT METADATA
-
-df_samples=pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
+df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
 df_samples.head()
 df_samples.groupby(by=['phenotype']).count()
 
-# %%  obtain indices of resistant samples in the dataset
-resistant_samples = df_samples[df_samples['phenotype'] == 'resistant'].index.values
-resistant_samples
+# %%  choose sample populations to work with
+pop1 = 'resistant'
+pop2 = 'susceptible'
+n_samples_pop1 = np.count_nonzero(df_samples.phenotype == pop1)
+n_samples_pop2 = np.count_nonzero(df_samples.phenotype == pop2)
+print(pop1, n_samples_pop1, pop2, n_samples_pop2)
 
-susceptible_samples = df_samples[df_samples['phenotype'] == 'susceptible'].index.values
-susceptible_samples
+# %% dictonary mapping population names to sample indices
+subpops = {
+    pop1: df_samples[df_samples.phenotype == pop1].index,
+    pop2: df_samples[df_samples.phenotype == pop2].index,
+}
 
-control_samples = df_samples[df_samples['phenotype'] == 'control'].index.values
-control_samples
+# %% get allele counts
+acs = genotype_all.count_alleles_subpops(subpops)
+acs
 
-# %%  Define subpopulations
-subpops = [susceptible_samples, resistant_samples, control_samples]
+# %% filter out variants that aren't segregating in the union of the two selected populations. 
+# also filter out multiallelic variants (these should already be removed during filtering of vcf but just to check)
 
-######################### CALCULATE Fst ##############################
-# %% 
-# I want to analyse the component of variance between populations
-# blen=None is not working, I need to specify a value for blen
+acu = allel.AlleleCountsArray(acs[pop1][:] + acs[pop2][:])
+flt = acu.is_segregating() & (acu.max_allele() == 1)
+print('retaining', np.count_nonzero(flt), 'SNPs')
 
-fst = allel.weir_cockerham_fst(gt, subpops, max_allele=1, blen=1000)
+# %% create the new genotype array
 
-a,b,c = allel.weir_cockerham_fst(gt, subpops, max_allele=1, blen=1000)
+pos = pos_all.compress(flt)
+ac1 = allel.AlleleCountsArray(acs[pop1].compress(flt, axis=0)[:, :2])
+ac2 = allel.AlleleCountsArray(acs[pop2].compress(flt, axis=0)[:, :2])
+genotype = genotype_all.compress(flt, axis=0)
+genotype
 
-# a is the component of variance between populations
-# b is the component of variance between individuals within populations
-# c is the component of variance between gametes within individuals
+############ additional methods comparisons ##########
 
-# in simpler terms
-
-# a: How much genetic diversity is there within a single group of individuals from the same population?
-# b: How different are the genetic traits between different groups of individuals (populations)?
-# c: Do certain genetic traits tend to appear together in similar patterns across different populations?
-
-# %% 
-# estimate Fst for each variant and each allele individually:
-
-fst = a / (a+b+c)
-
-# %% 
-# estimate Fst for each variant individually, averaging over alleles:
-
-fst = (np.sum(a, axis=1) /
-       (np.sum(a, axis=1) + np.sum(b, axis=1) + np.sum(c, axis=1)))
-
-# %% 
-# estimate Fst averaging over all variants and alleles:
-
-fst = np.sum(a) / (np.sum(a) + np.sum(b) + np.sum(c))
-
-# %% 
-# Create genomic position array
-
-import dask.array as da
-genomic_positions = da.arange(gt.shape[0])
-
-# %% 
-# create a mapping between genomic positions and Fst values
-
-import pandas as pd
-
-# %% 
-# reshape the FST arrays to be 1-dimensional
-a_1d = a.flatten()
-b_1d = b.flatten()
-c_1d = c.flatten()
-
-mapping = pd.DataFrame({
-    'genomic_position': genomic_positions.compute(),
-    'FST_a': a_1d,
-    'FST_b': b_1d,
-    'FST_c': c_1d
-})
+##### Comparing Fst estimators ####
+# %% ONE: calculate Weir and Cockerham Fst without using windows
+# sample indices for population 1
+pop1_idx = subpops[pop1]
+# sample indices for population 2
+pop2_idx = subpops[pop2]
+a, b, c = allel.weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx], max_allele=1)
+snp_fst_wc_no_windows = (a / (a + b + c))[:, 0]
+snp_fst_wc_no_windows
 
 
-## Seems a crazy low number of samples so using vcftools to calculate Fst too and comparing
+# %% TWO: calculate Weir and Cockerham Fst using windows
+# sample indices for population 1
+pop1_idx = subpops[pop1]
+# sample indices for population 2
+pop2_idx = subpops[pop2]
+a, b, c = allel.weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx], max_allele=1, blen=20000000)
+snp_fst_wc_windowed = (a / (a + b + c))[:, 0]
+snp_fst_wc_windowed
+
+
+# %% THREE: calculate Hudson Fst, no windows
+num, den = allel.hudson_fst(ac1, ac2)
+snp_fst_hudson = num / den
+snp_fst_hudson
+
+# %% Compare Fst values between Weir & Cockerham and Hudson, with no windows
+
+fig, ax = plt.subplots(figsize=(5, 5))
+sns.despine(ax=ax, offset=5)
+ax.plot(snp_fst_hudson, snp_fst_wc_no_windows, color='k', marker='.', linestyle=' ')
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_xlabel('Hudson $F_{ST}$')
+ax.set_ylabel('Weir & Cockerham $F_{ST}$')
+ax.set_title('%s (%s) vs %s (%s), SNP $F_{ST}$' % (pop1, n_samples_pop1, pop2, n_samples_pop2));
+
+# there are unequal sample sizes so the Fst estimators do appear different, not great. 
+# could use Hudson instead but W&C is standard.
+
+# %%
+### Compute chromosome-wide average Fst with standard errors approximated via a block-jackknife, to compare W&C and Hudson
+
+# Weir & Cockerham
+fst_wc, se_wc, vb_wc, _ = allel.blockwise_weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx],                                                                    blen=2000, max_allele=1)
+print('%.04f +/- %.04f (Weir & Cockerham)' % (fst_wc, se_wc))
+
+# Hudson
+fst_hudson, se_hudson, vb_hudson, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
+print('%.04f +/- %.04f (Hudson)' % (fst_hudson, se_hudson))
+
+# %% SNP ascertainment - run this test to see which SNPs to include in analysis
+# Bhatia et al recommend ascertaining SNPs by choosing SNPs that are segregating in a third outgroup population
+# If there is no obvious outgroup, there are four choices:
+# 1) choose SNPs segregating in the first population
+# 2) choose SNPs segregating in the second population
+# 3) choose SNPs segregating in either population
+# 4) choose SNPs segregating in both populations
+
+def compute_fst(ac1, ac2, scheme):
+    
+    if scheme == 'first':
+        loc_asc = ac1.is_segregating()
+    elif scheme == 'second':
+        loc_asc = ac2.is_segregating()
+    elif scheme == 'either':
+        loc_asc = ac1.is_segregating() | ac2.is_segregating()
+    elif scheme == 'both':
+        loc_asc = ac1.is_segregating() & ac2.is_segregating()    
+    n_snps = np.count_nonzero(loc_asc)
+    
+    ac1 = ac1.compress(loc_asc, axis=0)
+    ac2 = ac2.compress(loc_asc, axis=0)
+    
+    fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
+    
+    print('%.04f +/- %.04f (using %s SNPs segregating in %s population)' % (fst, se, n_snps, scheme))
+
+for scheme in 'first', 'second', 'either', 'both':
+    compute_fst(ac1, ac2, scheme)
+
+# use SNPs segregating in both populations (or could change this to use SNPs segregating in the control population)
+
+# %% Calculate Fst using W&C, windowed, with SNPs that are segregating in both populations
+
+import matplotlib.pyplot as plt
+
+# Assuming you have already calculated snp_fst_wc_windowed and pos
+
+# Create a figure and axis for the plot
+fig, ax = plt.subplots(figsize=(10, 4))
+
+# Plot Fst values along the genome
+ax.plot(pos, snp_fst_wc_windowed, 'k-', lw=0.5)
+
+# Customize the plot
+ax.set_ylabel('$F_{ST}$')
+ax.set_xlabel('Chromosome position (bp)')
+ax.set_xlim(0, pos.max())  # Set the x-axis limits based on your data
+
+# Optionally, you can add more customization, such as titles, legends, or gridlines
+# For example:
+# ax.set_title('Fst Along the Genome')
+# ax.grid(True)
+
+# %% Extract W&C Fst values above 0.6 and corresponding genomic positions 
+### threshold > 0.6
+
+# Weir and Cockerham Fst values
+snp_fst_wc_filtered = snp_fst_wc_windowed[snp_fst_wc_windowed > 0.6]
+
+# Genomic positions corresponding to filtered Fst values
+genomic_positions_filtered = pos.compress(snp_fst_wc_windowed > 0.6)
+
+# Initialize a list to store the window positions
+window_positions = []
+
+# Define the window size (blen)
+blen = 2000  # Adjust this based on your window size
+
+# Iterate through filtered Fst values and calculate the window positions
+for position in genomic_positions_filtered:
+    # Calculate the start position of the window containing 'position'
+    window_start = (position // blen) * blen
+    # Calculate the end position of the window
+    window_end = window_start + blen
+    # Add the start and end positions of the window to the list
+    window_positions.append((window_start, window_end))
+
+# Print the start and end positions of windows with Fst > 0.6
+for start, end in window_positions:
+    print(f"Start of Window with Fst > 0.6: {start}, End of Window: {end}")
+
+# %% Extract W&C Fst values above 0.6 and corresponding genomic positions 
+# Weir and Cockerham Fst values
+snp_fst_wc_filtered = snp_fst_wc_windowed[snp_fst_wc_windowed > 0.6]
+
+# Genomic positions corresponding to filtered Fst values
+genomic_positions_filtered = pos.compress(snp_fst_wc_windowed > 0.6)
+
+# Initialize lists to store window properties
+window_positions = []
+window_max_fst = []
+
+# Define the window size (blen)
+blen = 2000  # Adjust this based on your window size
+
+# Iterate through filtered Fst values and calculate the window positions and maximum Fst values
+for position in genomic_positions_filtered:
+    # Calculate the start position of the window containing 'position'
+    window_start = (position // blen) * blen
+    # Calculate the end position of the window
+    window_end = window_start + blen
+    # Add the start and end positions of the window to the list
+    window_positions.append((window_start, window_end))
+    
+    # Find indices within the current window
+    indices_in_window = (pos >= window_start) & (pos < window_end)
+    # Extract Fst values within the window
+    fst_values_in_window = snp_fst_wc_windowed[indices_in_window]
+    # Calculate the maximum Fst within the window
+    max_fst_in_window = fst_values_in_window.max()
+    window_max_fst.append(max_fst_in_window)
+
+# Print the start, end positions, and maximum Fst values of windows with Fst > 0.6
+for (start, end), max_fst in zip(window_positions, window_max_fst):
+    print(f"Start of Window: {start}, End of Window: {end}, Maximum Fst in Window: {max_fst}")
+
+# %%
+# Find the maximum Fst value in snp_fst_wc_windowed
+max_fst_value = snp_fst_wc_windowed.max()
+
+# %% Also used vcftools to calculate Fst snp by snp, too.
+## after filtering only kept 33 out of 42 individuals
 
 vcftools --gzvcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz \
 --weir-fst-pop resistant_samples.txt \
@@ -129,11 +264,18 @@ CHROM   POS     WEIR_AND_COCKERHAM_FST
 2L      1470    -0.0365088
 2L      1487    -0.0265077
 
-## this calculates for individual variants. Be arare that calculating Fst is often more common to use sliding windows to aggregate vriants over larger genomic regions.
-
-## after filtering only kept 33 out of 42 individuals
-## there are plenty of higher Fst values using vcftools, so need to understand what is going wrong in the scikit allel workflow
+## this calculates for individual variants. Be aware that calculating Fst is often more common to use sliding windows to aggregate vriants over larger genomic regions.
 
 
+####### Notes #######
+# I want to analyse the component of variance between populations
+# blen=None is not working, I need to specify a value for blen
+# a is the component of variance between populations
+# b is the component of variance between individuals within populations
+# c is the component of variance between gametes within individuals
 
+# in simpler terms
 
+# a: How much genetic diversity is there within a single group of individuals from the same population?
+# b: How different are the genetic traits between different groups of individuals (populations)?
+# c: Do certain genetic traits tend to appear together in similar patterns across different populations?

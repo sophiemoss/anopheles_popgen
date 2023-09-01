@@ -1,15 +1,4 @@
 
-
-######################## PCA FOR GENES OF INTEREST #########################
-
-## Make PCA for just genes of interest
-## Use bcftools to subset the filtered vcf just for the genes of interest and make a PCA of that
-
-# VGSC AgamP4_2L:2358158 to 2431617
-# subset VCF
-
-bcftools view -r 2L:2358158-2431617 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o VGSC_only_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
-
 ######################## SPECIFIC SNP DETECTION #########################
 
 # Do samples have the L995F mutation?
