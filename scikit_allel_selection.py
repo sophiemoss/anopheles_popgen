@@ -68,12 +68,15 @@ h_res_seg = gt_res_seg.to_haplotypes().compute()
 h_res_seg
 
 # %%
-## compute iHS values
-
 # we need variant positions
 pos = callset['variants/POS'][:]
 pos_res_seg = pos.compress(res_seg_variants, axis=0)
 pos_res_seg
+
+# variant positions of each chromosome separately for separate iHS plots
+chromosome_filter = callset['variants/CHROM'][:] == '2L'
+pos_2L = callset['variants/POS'][np.where(chromosome_filter)]
+
 
 # %%
 # some variants in 1000 genomes have multiple variants at the same genomic position, which causes problems for some selection tests in scikit-allel. Let's check if there any of these.
@@ -102,8 +105,9 @@ ax.set_ylabel('Frequency (no. variants)');
 # %% Standardize iHS
 
 ihs_res_std = allel.standardize_by_allele_count(ihs_res_raw, ac_res_seg[:, 1])
+ihs_res_std
 
-# %% Here I am having to deviate from the Jupyter notebok and use ihs_res_std[0] 
+# %% Here I am having to deviate from the Jupyter notebook and use ihs_res_std[0] 
 fig, ax = plt.subplots()
 ax.hist(ihs_res_std[0][~np.isnan(ihs_res_std[0])], bins=20)
 ax.set_xlabel('Standardized IHS')
@@ -158,6 +162,11 @@ ax.set_xlabel('Genomic position (bp)')
 ax.set_ylabel('$|IHS|$')
 ax.set_ylim(0, 9)
 ax.legend()
+
+# %% plot by chromosome by splitting pos_res_seg 
+
+
+
 
 # %% list all positions with iHS value over certain threshold (5?)
 
@@ -264,6 +273,8 @@ idx_hit_max
 
 # %% genomic position of top hit
 pos_sus_seg[idx_hit_max]
+
+# to check for variant in VCF use: bcftools view 2022gambiaevcfphased.vcf.gz | grep '28467703'
 
 # %% Visualise EHH decay around top hit with a Voight plot
 # pull out haplotypes for region around top hit
