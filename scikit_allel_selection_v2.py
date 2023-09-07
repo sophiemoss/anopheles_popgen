@@ -40,26 +40,31 @@ df_samples=pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','ye
 df_samples.head()
 df_samples.groupby(by=['phenotype']).count
 
-# %%
-## working with resistant samples
+# %% select resistant samples from metadata by index value and store as array
 
 res_samples = df_samples[df_samples['phenotype'] == 'resistant'].index.values
 res_samples
 
-# %%
-## select genotypes for resistant samples
+# %% select genotypes for variants for those resistant samples and store as a genotype dask array
 
 gt_res_samples = gt.take(res_samples, axis=1)
 gt_res_samples
 
-# %%
-## select variants that are segregating within res_samples as only these will be informative
+# %% select variants that are segregating within res_samples as only these will be informative
 ## also some selection tests don't support multiallelic variants, so just keep biallelics
 ## for this pipeline the VCF is already filtered so should be no biallelic SNPs anyway
 
+# %% compute allele counts for resistant samples and create allele counts array
 ac_res = gt_res_samples.count_alleles(max_allele=8).compute()
+# %% filter for those that are segregating and biallelic and store as a boolean array
 res_seg_variants = ac_res.is_segregating() & ac_res.is_biallelic_01()
+# %% remove variants that are on Y_unplaced using a boolean mask
+chrom = callset['variants/CHROM'][:]
+exclude_chrom = 'Y_unplaced'
+res_seg_variants = res_seg_variants & (chrom != exclude_chrom)
+# %% make an allele counts array from this
 ac_res_seg = ac_res.compress(res_seg_variants, axis=0)
+# %% also make a genotype dask array
 gt_res_seg = gt_res_samples.compress(res_seg_variants, axis = 0)
 gt_res_seg
 
@@ -69,11 +74,15 @@ gt_res_seg
 h_res_seg = gt_res_seg.to_haplotypes().compute()
 h_res_seg
 
-# %%
-# we need variant positions
+# %% we need variant positions
 pos = callset['variants/POS'][:]
 pos_res_seg = pos.compress(res_seg_variants, axis=0)
 pos_res_seg
+
+# %% also store chromosome of each variant as we need this for shading the plots later
+chrom = callset['variants/CHROM'][:]
+chrom_res_seg = chrom.compress(res_seg_variants, axis=0)
+chrom_res_seg
 
 # %%
 # some variants in 1000 genomes project have multiple variants at the same genomic position, 
@@ -94,19 +103,18 @@ ihs_res_raw = allel.ihs(h_res_seg, pos_res_seg, use_threads=True, include_edges=
 ihs_res_raw
 
 # %%
-
 %matplotlib inline
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# %%
+# %% Plot raw iHS
 
 fig, ax = plt.subplots()
 ax.hist(ihs_res_raw[~np.isnan(ihs_res_raw)], bins=20)
 ax.set_xlabel('Raw IHS')
 ax.set_ylabel('Frequency (no. variants)');
 
-# %% Standardize iHS
+# %% Standardize iHS. Note that iHS has been calculated with unpolarized data, so only the magnitude of iHS
 
 ihs_res_std = allel.standardize_by_allele_count(ihs_res_raw, ac_res_seg[:, 1])
 ihs_res_std
@@ -114,39 +122,64 @@ ihs_res_std
 # %% Generate timestamp with current date and time for the figure you are about to make
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-# Here we deviate from the Jupyter notebook and use ihs_res_std[0] 
-fig, ax = plt.subplots()
-ax.hist(ihs_res_std[0][~np.isnan(ihs_res_std[0])], bins=20)
-ax.set_xlabel('Standardised IHS')
-ax.set_ylabel('Frequency (no. variants)');
+# %% Plot standardized iHS over genome and display which iHS values are significant
+# Default red line for significance for iHS is 4. Default for XP-EHH is 5. Defauly for RSB is 5.
+# I am using iHS significanc of 5 because otherwise it is too many SNPs at 4.
 
-# Save the figure as a file (e.g., PNG) in the current working directory
-filename = f'standardised_ihs_histogram_{timestamp}.png'
-plt.savefig(filename)
+#fig, ax = plt.subplots(figsize=(10, 3))
+#ax.plot(pos_res_seg, np.abs(ihs_res_std[0]), linestyle=' ', marker='o', mfc='none', mew=.5, mec='k')
+#ax.axhline(y=5, color='red', linestyle='--')
+#ax.set_xlabel('Genomic position (bp)')
+#ax.set_ylabel('$|IHS|$')
+#ax.set_ylim(0, 9)
+#ax.legend()
+#
+## Disable scientific notation for x-axis so that full numbers are printed
+#ax.get_xaxis().get_major_formatter().set_scientific(False)
+#ax.legend()
 
-# show the plot (optional, could # this out)
-plt.show()
+# %% Plot standardized iHS across genome and shade chromosomes
 
-# %% note that iHS has been calculated with unpolarized data, so only the magnitude of iHS
-# is informative, not the sign.
-ihs_res_std
+# Shading manhattan based on chromosome
+chromosome_colours = {
+    '2L': 'red',
+    '2R': 'orange',
+    '3R': 'yellow',
+    '3L': 'green',
+    'X': 'blue',
+    'Mt': 'black',
+    'Y_unplaced': 'purple',
+}
 
-# %% plot over the genome
 fig, ax = plt.subplots(figsize=(10, 3))
-ax.plot(pos_res_seg, np.abs(ihs_res_std[0]), linestyle=' ', marker='o', mfc='none', mew=.5, mec='k')
+
+# Loop through chromosomes and plot variants with different colors
+for chrom, color in chromosome_colours.items():
+    is_chrom = (chrom_res_seg == chrom)
+    ax.plot(pos_res_seg[is_chrom], np.abs(ihs_res_std[0][is_chrom]), linestyle=' ', marker='o', mfc='none', mew=.5, mec=color, label=chrom)
+
+# Plot variants above the significant line as purple
+above_significance = np.abs(ihs_res_std[0]) > 5  # You can adjust the threshold here
+ax.plot(pos_res_seg[above_significance], np.abs(ihs_res_std[0][above_significance]), linestyle=' ', marker='o', mfc='cyan', mew=0.25, mec='blue', label='Above Significance')
+
+ax.axhline(y=5, color='red', linestyle='--')
 ax.set_xlabel('Genomic position (bp)')
 ax.set_ylabel('$|IHS|$')
-ax.set_ylim(-2, 9);
+ax.set_ylim(0, 9)
+#ax.legend()
 
-# Save the figure as a file (e.g., PNG) in the current working directory
+# Disable scientific notation for x-axis so that full numbers are printed
+ax.get_xaxis().get_major_formatter().set_scientific(False)
+
+# Save figure
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-filename = f'ihs_manhattan_{timestamp}.png'
+filename = f'shaded_standardised_ihs_histogram_with_cutoff_{timestamp}.png'
 plt.savefig(filename)
 
-# %% find the index of the variant with the highest iHS value
+# %% Find the index of the variant with the highest iHS value
 idx_hit_max = np.nanargmax(ihs_res_std[0])
 
-# %% genomic position of top hit
+# %% Find the genomic position of top hit
 pos_res_seg[idx_hit_max]
 print(f'Genomic position with highest iHS value:', pos_res_seg[idx_hit_max])
 
@@ -164,50 +197,18 @@ fig.suptitle('Reference allele', y=1);
 fig = allel.fig_voight_painting(h_hit[:, h_res_seg[idx_hit_max] == 1], index=flank_size, height_factor=0.02)
 fig.suptitle('Alternate allele', y=1);
 
-# %%
-# Display which iHS values are significant
-
-# Default red line for significance for iHS is 4. Default for XP-EHH is 5. Defauly for RSB is 5.
-# I am using iHS significanc of 5 because otherwise it is too many SNPs at 4.
-
-# %% Include red line in the plot showing significance
-
-fig, ax = plt.subplots(figsize=(10, 3))
-ax.plot(pos_res_seg, np.abs(ihs_res_std[0]), linestyle=' ', marker='o', mfc='none', mew=.5, mec='k')
-ax.axhline(y=5, color='red', linestyle='--')
-ax.set_xlabel('Genomic position (bp)')
-ax.set_ylabel('$|IHS|$')
-ax.set_ylim(0, 9)
-ax.legend()
-
-# Disable scientific notation for x-axis so that full numbers are printed
-ax.get_xaxis().get_major_formatter().set_scientific(False)
-ax.legend()
-
-# save figure
-timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-filename = f'standardised_ihs_histogram_with_cutoff_{timestamp}.png'
-plt.savefig(filename)
-
-# %% plot by chromosome by splitting pos_res_seg or shade chromosomes different colours?
-
-
-
-
-# %% list all positions with iHS value over certain threshold (5?)
+# %% list all positions with iHS value over certain threshold and save to a file
 
 res_ihs_positions_above_threshold_6 = pos_res_seg[ihs_res_std[0] >= 6]
 res_ihs_positions_above_threshold_6
 
-# Save positions_above_threshold to a text file
 with open("res_ihs_positions_above_threshold_6.txt", "w") as file:
     for position in res_ihs_positions_above_threshold_6:
         file.write(str(position) + "\n")
-
+# %%
 res_ihs_positions_above_threshold_5 = pos_res_seg[ihs_res_std[0] >= 5]
 res_ihs_positions_above_threshold_5
 
-# Save positions_above_threshold to a text file
 with open("res_ihs_positions_above_threshold_5.txt", "w") as file:
     for position in res_ihs_positions_above_threshold_5:
         file.write(str(position) + "\n")
@@ -250,9 +251,13 @@ pos_sus_seg
 
 # %%
 # some variants in 1000 genomes have multiple variants at the same genomic position, which causes problems for some selection tests in scikit-allel. Let's check if there any of these.
-np.count_nonzero(np.diff(pos_sus_seg == 0))
+count_multiple_variants = np.count_nonzero(np.diff(pos_sus_seg == 0))
 
-# 0 so we are good to continue
+if count_multiple_variants == 0:
+    print("No cases where there are multiple variants at the same genomic position, script will continue")
+else:
+    print("There are multiple variants at the same genomic position. This causes problems with some selection tests using sci-kit allel.")
+    sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
 # %%
 # compute raw iHS
@@ -293,7 +298,7 @@ ax.set_xlabel('Genomic position (bp)')
 ax.set_ylabel('$|IHS|$')
 ax.set_ylim(0, 9);
 
-# %% look for where the biggest signal is
+# %% look for the index of the variant with the highest iHS signal
 idx_hit_max = np.nanargmax(ihs_sus_std[0])
 idx_hit_max
 
@@ -317,14 +322,7 @@ fig = allel.fig_voight_painting(h_hit[:, h_sus_seg[idx_hit_max] == 1], index=fla
 fig.suptitle('Alternate allele', y=1);
 
 # %%
-# Display which iHS values are significant
-
-# Where do we put the red line of significance? In Emilia's pop gen scripts, they
-# are put where previous papers have had them. Default for iHS is 4. Default for XP-EHH is 5.
-# Defauly for rsb is 5.
-# I am using iHS significanc of 5 because otherwise it is too many SNPs at 4.
-
-# %% Add red line to the plot showing significance
+# Plot iHS values and include line of which iHS values are significant
 
 fig, ax = plt.subplots(figsize=(10, 3))
 ax.plot(pos_sus_seg, np.abs(ihs_sus_std[0]), linestyle=' ', marker='o', mfc='none', mew=.5, mec='k')
@@ -334,18 +332,14 @@ ax.set_ylabel('$|IHS|$')
 ax.set_ylim(0, 9)
 ax.legend()
 
-# %% list all positions with iHS value over certain threshold (5?)
+# %% list all positions with iHS value over certain threshold
 
 sus_ihs_positions_above_threshold_6 = pos_sus_seg[ihs_sus_std[0] >= 6]
-
-# Save positions_above_threshold to a text file
 with open("sus_ihs_positions_above_threshold_6.txt", "w") as file:
     for position in sus_ihs_positions_above_threshold_6:
         file.write(str(position) + "\n")
 
 sus_ihs_positions_above_threshold_5 = pos_sus_seg[ihs_sus_std[0] >= 5]
-
-# Save positions_above_threshold to a text file
 with open("sus_ihs_positions_above_threshold_5.txt", "w") as file:
     for position in sus_ihs_positions_above_threshold_5:
         file.write(str(position) + "\n")
@@ -355,9 +349,6 @@ with open("sus_ihs_positions_above_threshold_5.txt", "w") as file:
 ## Compute the unstandardized cross-population extended haplotype homozygosity score (XPEHH) for each variant.
 ## allel.xpehh(h1, h2, pos, map_pos=None, min_ehh=0.05, include_edges=False, gap_scale=20000, max_gap=200000, is_accessible=None, use_threads=True)
 # create h1 and h2, selecting all variants instead of segregating variants only, which is what we did in iHS
-
-
-# %%
 ## VCF is phased so we can convert genotype arrays made earlier to haplotype array
 
 h_sus = gt_sus_samples.to_haplotypes().compute()
@@ -386,18 +377,14 @@ print("pos shape", pos.shape)
 xpehh_raw = allel.xpehh(h_sus, h_res, pos, use_threads=True)
 xpehh_raw
 
-# %% look for where the biggest signal is
+# %%  find index of variant with highest xp_ehh signal
 xpehh_hit_max = np.nanargmax(xpehh_raw)
 xpehh_hit_max
 
 # %% genomic position of top hit
 pos[xpehh_hit_max]
 
-# %%
-%matplotlib inline
-import matplotlib.pyplot as plt
-
-# %%
+# %% Plot raw XP-EHH values
 
 fig, ax = plt.subplots()
 ax.hist(xpehh_raw[~np.isnan(xpehh_raw)], bins=20)
@@ -407,16 +394,11 @@ ax.set_ylabel('Frequency (no. variants)');
 # %% Standardize XP-EHH - do not think that we really need to do this
 
 # xpehh_std = allel.standardize_by_allele_count(xpehh_raw, ac_gt[:, 1])
-
-# %% 
+# plot
 #fig, ax = plt.subplots()
 #ax.hist(xpehh_std[0][~np.isnan(xpehh_std[0])], bins=20)
 #ax.set_xlabel('Standardized XP-EHH')
 #ax.set_ylabel('Frequency (no. variants)');
-
-# %% note that iHS has been calculated with unpolarized data, so only the magnitude of iHS
-# is informative, not the sign.
-# xpehh_std
 
 # %% look at shapes
 
@@ -429,7 +411,6 @@ max_pos = pos.max()
 print("Minimum Genomic Position:", min_pos)
 print("Maximum Genomic Position:", max_pos)
 
-
 # %% plot on manhattan plot
 
 fig, ax = plt.subplots(figsize=(10, 3))
@@ -441,15 +422,13 @@ ax.set_ylim(0, 8)
 ax.set_xlim(0,61542681)
 ax.legend()
 
-# %% list all positions with iHS value over certain threshold
+# %% list all positions with xpehh value over certain threshold
 
 xpehh_positions_above_threshold_4 = pos[xpehh_raw >= 4]
 
-# Save positions_above_threshold to a text file
 with open("xpehh_positions_above_threshold_4", "w") as file:
     for position in xpehh_positions_above_threshold_4:
         file.write(str(position) + "\n")
-
 
 
 # %% ################################ TAJIMA'S D #####################################
@@ -548,3 +527,11 @@ ac_con_samples
 # %% compute PBS
 
 allel.pbs(ac_sus_samples, ac_res_samples, ac_con_samples, 1000)
+
+
+### To do:
+# selection script
+# sort out shading on iHS and XP-EHH graphs
+# get Tajima's D to run properly
+# work out how to interpret H12 
+# work out how to interpret PBS

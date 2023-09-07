@@ -1,41 +1,35 @@
 ## scikitallel_workflow
-
-conda activate scikit
+# /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/scikit_allel_fst_calculate_and_plot_v2.py
+# run this script using
+# python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename
 
 ######################## CALCULATING FST #########################
 ## adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
 
-# %%
+import os
+import argparse
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-%matplotlib inline
 import seaborn as sns
 sns.set_style('white')
 sns.set_style('ticks')
 import pandas as pd
-import allel; print('scikit-allel', allel.__version__)
+import allel  # Import allel at the top of the script
 
-# %% Set wd
-os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
-os.getcwd()
+def main(args):
+    print('scikit-allel', allel.__version__)
+    
+    # set working directory
+    os.chdir(args.working_directory)
+    print("Working directory:", os.getcwd())
 
-# %% CONVERT FILTERED UNPHASED VCF TO ZARR FILE
-# Note this is using unphased VCF to convert to zarr at the moment
-# allel.vcf_to_zarr('example.vcf', 'example.zarr', fields='*', overwrite=True)
-# print('zarr', zarr.__version__, 'numcodecs', numcodecs.__version__)
+    # Open the callset file
+    callset = zarr.open(args.callset_file, mode='r')
 
-callset = zarr.open('F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.zarr', mode='r')
-# callset.tree(expand=True)
-
-# %% choose how much of genome to look at
-# load variant positions for whole genome or section of genome
-# pos_all = callset['variants/POS'][:]
-# chrom_all = callset['variants/CHROM'][:]
-# load variant positions for specific chromosome
-
-chromosome_filter = callset['variants/CHROM'][:] == '3L'
-pos_all = callset['variants/POS'][np.where(chromosome_filter)[0]] 
+    # Filter by chromosome
+    chromosome_filter = callset['variants/CHROM'][:] == args.chromosome
+    pos_all = callset['variants/POS'][np.where(chromosome_filter)[0]]
 
 # %%  CONVERT ZARR FILE TO GENOTYPE ARRAY
 # whole genome
@@ -119,7 +113,7 @@ max_window = windows[max_index]
 print("Maximum FST Value:", max_value)
 print("Corresponding Window:", max_window)
 
-# %% Calculte fst with blen = 1 and plot
+# %% Calculte fst with blen = 1 so that fst is calculated for every variant. Note this takes a bit longer to run.
 # PLOT FST using windowed weird and cockerham fst - try this, not sure if x = pos
 
 subpoplist = [list(subpops['resistant']),
@@ -134,11 +128,11 @@ a, b, c = allel.weir_cockerham_fst(genotype, subpoplist, blen=1)
 
 # or estimate Fst for each variant individually, averaging over alleles
 
-fst = (np.sum(a, axis=1) /
+fst_pervariant = (np.sum(a, axis=1) /
        (np.sum(a, axis=1) + np.sum(b, axis=1) + np.sum(c, axis=1)))
 
 # use the per-block average Fst as the Y coordinate
-y = fst
+y = fst_pervariant
 
 x = pos
 
@@ -152,5 +146,22 @@ ax.set_xlim(0, pos.max())
 
 print(len(x),len(y))
 
+# Here you can see that fst values are much higher when calculated for each position individually
 
+print("Maximum FST Value:", max_value)
+print("Corresponding Window:", max_window)
 
+# arguments
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Calculate and plot FST using scikit-allel.")
+    parser.add_argument("working_directory", type=str, help="Working directory for the script.")
+    parser.add_argument("callset_file", type=str, help="Path to the callset file.")
+    parser.add_argument("chromosome", type=str, help="Chromosome to analyze.")
+    args = parser.parse_args()
+
+    # Check if any required arguments are missing
+    if args.working_directory is None or args.callset_file is None or args.chromosome is None:
+        print("Usage: python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename")
+    else:
+        main(args)
