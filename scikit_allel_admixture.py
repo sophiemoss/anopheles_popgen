@@ -1,18 +1,4 @@
 
-######################## SPECIFIC SNP DETECTION #########################
-
-# Do samples have the L995F mutation?
-
-bcftools query -i 'POS==2422652' -f '%CHROM\t%POS\t%REF\t%ALT[\t%SAMPLE:%GT]\n' \
--r 2L:2422652 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz \
-> 2422652_genotypes.txt
-
-bcftools query -i 'POS==2429745' -f '%CHROM\t%POS\t%REF\t%ALT[\t%SAMPLE:%GT]\n' \
--r 2L:2429745 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz \
-> 2429745_genotypes.txt
-
-
-
 
 ######################## ADMIXTURE #########################
 

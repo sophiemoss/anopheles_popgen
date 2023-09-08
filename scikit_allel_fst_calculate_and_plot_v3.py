@@ -4,7 +4,7 @@
 # python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename
 
 ######################## CALCULATING FST #########################
-## adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
+# %% adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
 
 import os
 import argparse
@@ -15,8 +15,11 @@ import seaborn as sns
 sns.set_style('white')
 sns.set_style('ticks')
 import pandas as pd
-import allel  # Import allel at the top of the script
+import allel
+import sys
+from datetime import datetime
 
+# %%
 def main(args):
     print('scikit-allel', allel.__version__)
     
@@ -26,10 +29,12 @@ def main(args):
 
     # Open the callset file
     callset = zarr.open(args.callset_file, mode='r')
+    print("Callset file:", args.callset_file)
 
     # Filter by chromosome
     chromosome_filter = callset['variants/CHROM'][:] == args.chromosome
     pos_all = callset['variants/POS'][np.where(chromosome_filter)[0]]
+    print("Chromosome being analysed:", args.chromosome)
 
     # %%  CONVERT ZARR FILE TO GENOTYPE ARRAY
     # whole genome
@@ -40,19 +45,25 @@ def main(args):
     genotype_all = allel.GenotypeChunkedArray(callset['calldata/GT'][np.where(chromosome_filter)[0]])
 
     # check length of pos_all and genotype_all are the same
-    print(len(pos_all),len(genotype_all))
+    
+    if len(pos_all)==len(genotype_all):
+        print("Length of positions and genotypes in the genotype array are the same, script continuing")
+    else:
+        print("Something is wrong with the genotype_all array as the lenght of pos_all and genotype_all are different. Stopping script.")
+        sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %%  IMPORT METADATA
     df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
     df_samples.head()
     df_samples.groupby(by=['phenotype']).count()
+    print("Imported metadata")
 
     # %%  choose sample populations to work with
     pop1 = 'resistant'
     pop2 = 'susceptible'
     n_samples_pop1 = np.count_nonzero(df_samples.phenotype == pop1)
     n_samples_pop2 = np.count_nonzero(df_samples.phenotype == pop2)
-    print(pop1, n_samples_pop1, pop2, n_samples_pop2)
+    print("Population 1:", pop1, "Number of samples in pop1:", n_samples_pop1, "Population 2:", pop2, "Number of samples in pop2:", n_samples_pop2)
 
     # %% dictonary mapping population names to sample indices
     subpops = {
@@ -69,7 +80,7 @@ def main(args):
 
     acu = allel.AlleleCountsArray(acs[pop1][:] + acs[pop2][:])
     flt = acu.is_segregating() & (acu.max_allele() == 1)
-    print('retaining', np.count_nonzero(flt), 'SNPs')
+    print('Filtered out variants that are not segretating, or are not biallelic. Now retaining', np.count_nonzero(flt), 'SNPs')
 
     # %% create the new genotype array
 
@@ -79,10 +90,17 @@ def main(args):
     genotype = genotype_all.compress(flt, axis=0)
     genotype
 
+    print("Created genotype array")
+
     # check that pos and genotype are the same size
-    print(len(pos),len(genotype))
+    if len(pos)==len(genotype):
+        print("Length of positions and genotypes in the genotype array are the same, script continuing")
+    else:
+        print("Something is wrong with the genotype_all array as the lenght of pos_all and genotype_all are different. Stopping script.")
+        sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %% PLOT FST using windowed weird and cockerham fst
+    print("Plotting Fst using allel.windowed_weir_cockerham_fst, window size 100000")
 
     subpoplist = [list(subpops['resistant']),
                     list(subpops['susceptible'])]
@@ -104,17 +122,42 @@ def main(args):
 
     print(len(x),len(y))
 
+    # save fst figure
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    filename = f'fst_w&c_windowed_{args.chromosome}_{pop1}_{pop2}_{timestamp}.png'
+    plt.savefig(filename)
+    print("Saving windowed Fst plot")
+
     # INSPECT Fst values
     # %% Print the maximum FST value and its corresponding window
+    
+    print("Inspecting windowed Fst plot for maximum value")
+
     max_value = max(fst)
     max_index = np.argmax(fst)
     max_window = windows[max_index]
 
     print("Maximum FST Value:", max_value)
-    print("Corresponding Window:", max_window)
+    print("Corresponding Window (Genomic bps):", max_window)
+
+    # %% save Fst values over a certain threshold
+    
+    fst_threshold = 0.6
+    fst_over_threshold = [(window,value) for window, value in zip(windows,fst) if value >= fst_threshold]
+
+    if fst_over_threshold:
+        with open('fst_greater_than_0.6_{pop1}_{pop2}_window_size_100000.txt', 'w') as fst_file:
+            fst_file.write("Window (Genomic bps)\FST Value\n")
+            for window, value in fst_over_threshold:
+                fst_file.write(f"{window[0]}-{window[1]}\t{value}\n")
+        print ("Saved FST values over 0.6 to fst_greater_than_0.6.txt")
+    else:
+        print("No FST values over the threshold were found")
+
 
     # %% Calculte fst with blen = 1 so that fst is calculated for every variant. Note this takes a bit longer to run.
     # PLOT FST using windowed weird and cockerham fst - try this, not sure if x = pos
+    print("Calculating fst with blen = 1, this takes a bit longer to run as fst is being calculating for each variant instead of in windows")
 
     subpoplist = [list(subpops['resistant']),
                     list(subpops['susceptible'])]
@@ -127,11 +170,14 @@ def main(args):
     # fst = a / (a + b + c)
 
     # or estimate Fst for each variant individually, averaging over alleles
+    print("Estimating Fst for each variant individually, averaging over alleles")
 
     fst_pervariant = (np.sum(a, axis=1) /
         (np.sum(a, axis=1) + np.sum(b, axis=1) + np.sum(c, axis=1)))
 
     # use the per-block average Fst as the Y coordinate
+    print("Plotting fst with blen = 1")
+
     y = fst_pervariant
 
     x = pos
@@ -146,10 +192,35 @@ def main(args):
 
     print(len(x),len(y))
 
+    # save fst figure
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    filename = f'fst_w&c_blen=1_{pop1}_{pop2}_{timestamp}.png'
+    plt.savefig(filename)
+    print("Saving blen = 1 Fst plot")
+
     # Here you can see that fst values are much higher when calculated for each position individually
 
+    print("Inspecting windowed Fst plot for maximum value")
+    max_value = max(fst_pervariant)
+    max_index = np.argmax(fst_pervariant)
+    max_window = windows[max_index]
+
     print("Maximum FST Value:", max_value)
-    print("Corresponding Window:", max_window)
+    print("Corresponding Window (Genomic bps):", max_window)
+
+    # Filter FST values greater than or equal to 0.6
+    fst_threshold = 0.6
+    fst_over_threshold = [(pos[i], value) for i, value in enumerate(fst_pervariant) if value >= fst_threshold]
+
+    if fst_over_threshold:
+        with open('fst_individual_variants_greater_than_0.6.txt', 'w') as fst_file:
+            fst_file.write("Variant (Genomic bps)\tFST Value\n")
+            for variant, value in fst_over_threshold:
+                fst_file.write(f"{variant}\t{value}\n")
+        print("Saved individual variant FST values over 0.6 to fst_individual_variants_greater_than_0.6.txt")
+    else:
+        print("No individual variant FST values over the threshold (FST >= 0.6) were found.")
+
 
 # arguments
 

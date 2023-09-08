@@ -20,6 +20,7 @@ import numpy as np
 import allel
 import zarr
 import pandas as pd
+import sys
 
 ## convert phased, filtered, VCF file to zarr file
 # %%
@@ -144,8 +145,8 @@ timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 chromosome_colours = {
     '2L': 'red',
     '2R': 'orange',
-    '3R': 'yellow',
-    '3L': 'green',
+    '3L': 'yellow',
+    '3R': 'green',
     'X': 'blue',
     'Mt': 'black',
     'Y_unplaced': 'purple',
@@ -153,28 +154,57 @@ chromosome_colours = {
 
 fig, ax = plt.subplots(figsize=(10, 3))
 
+offset = {
+    '2L':0,
+    '2R':49364325,
+    '3L':110909430,
+    '3R':152872865,
+    'X':206073549,
+    'Mt':230466657,
+    'Y_unplaced':230482020
+}
+
+# Create a list of chromosome names and their corresponding positions
+chromosome_labels = [
+    ('2L', 25000000),
+    ('2R', 75000000),
+    ('3L', 130000000),  # Adjust as needed
+    ('3R', 180000000),  # Adjust as needed
+    ('X', 218000000),   # Adjust as needed
+    ('Mt', 230466657),
+    ('Y_unplaced', 230482020)
+]
+
+# Extract chromosome names and positions from the list
+chromosomes, positions = zip(*chromosome_labels)
+
+# Set the x-axis ticks and labels
+ax.set_xticks(positions)
+ax.set_xticklabels(chromosomes)
+
 # Loop through chromosomes and plot variants with different colors
 for chrom, color in chromosome_colours.items():
     is_chrom = (chrom_res_seg == chrom)
-    ax.plot(pos_res_seg[is_chrom], np.abs(ihs_res_std[0][is_chrom]), linestyle=' ', marker='o', mfc='none', mew=.5, mec=color, label=chrom)
+    xpos = offset[chrom] + pos_res_seg[is_chrom]
+    ax.plot(xpos, np.abs(ihs_res_std[0][is_chrom]), linestyle=' ', marker='o', mfc='none', mew=.5, mec=color, label=chrom)
 
-# Plot variants above the significant line as purple
+# Plot variants above the significant line in different colout
 above_significance = np.abs(ihs_res_std[0]) > 5  # You can adjust the threshold here
-ax.plot(pos_res_seg[above_significance], np.abs(ihs_res_std[0][above_significance]), linestyle=' ', marker='o', mfc='cyan', mew=0.25, mec='blue', label='Above Significance')
+#ax.plot(xpos[above_significance], np.abs(ihs_res_std[0][above_significance]), linestyle=' ', marker='o', mfc='cyan', mew=0.25, mec='blue', label='Above Significance')
 
 ax.axhline(y=5, color='red', linestyle='--')
-ax.set_xlabel('Genomic position (bp)')
+ax.set_xlabel('Chromosome')
 ax.set_ylabel('$|IHS|$')
 ax.set_ylim(0, 9)
-#ax.legend()
+ax.legend()
 
 # Disable scientific notation for x-axis so that full numbers are printed
-ax.get_xaxis().get_major_formatter().set_scientific(False)
+#ax.get_xaxis().get_major_formatter().set_scientific(False)
 
 # Save figure
-timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-filename = f'shaded_standardised_ihs_histogram_with_cutoff_{timestamp}.png'
-plt.savefig(filename)
+#timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+#filename = f'shaded_standardised_ihs_histogram_with_cutoff_{timestamp}.png'
+#plt.savefig(filename)
 
 # %% Find the index of the variant with the highest iHS value
 idx_hit_max = np.nanargmax(ihs_res_std[0])
@@ -426,7 +456,7 @@ ax.legend()
 
 xpehh_positions_above_threshold_4 = pos[xpehh_raw >= 4]
 
-with open("xpehh_positions_above_threshold_4", "w") as file:
+with open("xpehh_positions_above_threshold_4.txt", "w") as file:
     for position in xpehh_positions_above_threshold_4:
         file.write(str(position) + "\n")
 

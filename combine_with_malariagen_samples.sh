@@ -1,13 +1,6 @@
-## aligning my raw fastq files to P3 reference genome for combining with malariagen data (previously aligned to P4)
+########## MALARIAGEN DATA - phase 3 ##################
 
-cat fastq2vcfsamples.txt | parallel -j 20 \
-"fastq2vcf.py all --read1 {}_1.fastq.gz --read2 {}_2.fastq.gz \
---ref GCF_000005575.2_AgamP3_genomic.fasta \
---prefix {}" > fastq2vcf_AgamP3_log.txt 2>&1
-
-########## MALARIAGEN DATA ##################
-
-## downloaded vcfs from malariagen for Ag1000G
+## download vcfs from malariagen for Ag1000G
 wget ftp:'//ngs.sanger.ac.uk/production/ag1000g/phase2/AR1/variation/main/vcf/all/*.vcf.gz'
 
 ## concatenate them together as they are all for different chromosomes

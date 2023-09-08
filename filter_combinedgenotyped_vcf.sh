@@ -7,10 +7,10 @@
 # This means that bcftools will decompose multi-allelic sites using the minor allele as the reference allele in the biallelic split.
 # here -v tells bcftools to only view SNPS, so indels are excluded
 
-bcftools view -M2 -m2 -v snps gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
+bcftools view -M2 -m2 -v snps gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
 # you must bgzip the file before indexing if you did not use -Oz to make the output bgzip
-bgzip bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
+# bgzip bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf
 
 # tabix index the compressed VCF file, creates .vcf.gz.tbi
 tabix -p vcf bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
@@ -24,9 +24,11 @@ bcftools query -f '%CHROM\n' bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vc
 
 tabix -p vcf bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
-# FILTER 2: Filter samples to keep those with 4'0% of genome with > 10x coverage, and min-ac=1 so that all variants that remain are still variants after sample removal
+# FILTER 2: Filter samples to keep those with 40% of genome with > 10x coverage, and min-ac=1 so that all variants that remain are still variants after sample removal
 # I have identified samples that are above this threshold using my basic WGS stats
 # create file with samples to keep: sample_40_10.txt
+
+# GOT TO HERE NEED TO RUN 
 
 bcftools view -S sample_40_10.txt bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --min-ac=1 -Oz -o miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
@@ -86,15 +88,15 @@ bcftools filter -e 'AC==0' DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023
 
 ## How many variants are left?
 bcftools view -H AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
-21024383
+#21024383
 
 ## compare to previous
 bcftools view -H DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
-21679588
+#21679588
 
 ## compare to original
 bcftools view -H gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
-36016533
+#36016533
 
 ## FILTER 6
 ## Remove variants with a high amount of missing genotypes and filter on minor allele frequency
@@ -127,7 +129,7 @@ tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.
 # Phase the filtered vcf using beagle, https://faculty.washington.edu/browning/beagle/beagle_5.2_13Oct21.pdf
 # could also use phasing pipeline from malariagen. Have a look at this, and understand gatk parameters above.
 
-mamba install beagle
+#mamba install beagle
 
 beagle -Xmx500g gt=F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz out=2022gambiaevcfphased
 
@@ -135,10 +137,10 @@ beagle -Xmx500g gt=F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_no
 
 ## unphased melas
 bcftools query -f '%CHROM\t%POS\n' F_MISSING_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_melas_2019_plusglobal.2023_07_05.genotyped.vcf.gz | awk '$1=="2L"' | wc -l
-2774854
+#2774854
 ## phased
 bcftools query -f '%CHROM\t%POS\n' 2019_melas_phased.vcf.gz | awk '$1=="2L"' | wc -l
-2774854
+#2774854
 
 ## unphased gambiae
 bcftools query -f '%CHROM\t%POS\n' F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz | awk '$1=="2L"' | wc -l
