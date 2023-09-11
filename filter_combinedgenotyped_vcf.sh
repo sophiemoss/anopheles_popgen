@@ -28,7 +28,6 @@ tabix -p vcf bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 # I have identified samples that are above this threshold using my basic WGS stats
 # create file with samples to keep: sample_40_10.txt
 
-# GOT TO HERE NEED TO RUN 
 
 bcftools view -S sample_40_10.txt bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --min-ac=1 -Oz -o miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
@@ -100,13 +99,12 @@ bcftools view -H gambiae_nov2022.2023_07_05.genotyped.vcf.gz | wc -l
 
 ## FILTER 6
 ## Remove variants with a high amount of missing genotypes and filter on minor allele frequency
-## The data set overall will now have lots of missing data. 
-## This is because we set genotypes with low quality and low read depth to missing. 
+## The data set overall will now have lots of missing data, because we have replaced calls with depth <5 or quality below 20 with ./.  
 ## Therefore we will now remove all variants that have more than 20% missing genotypes or MAF < 0.01
-## Filtering for MAF 0.01 means that remaining sites in the VCF have a minimum minor allele frequency of 1%
+## Filtering for MAF 0.01 means that remaining sites in the VCF need to have a minimum minor allele frequency of 1%
 ## This dataset includes 44 individuals (thus maximally 88 alleles per site). If we filter for MAF 0.01, 
 ## a variant is excluded if its minor allele is found in less than 0.88 genotypes (1% of 88). 
-## This would remove alleles where the minor allele occurs 0.88 times or less, which for this set means a 
+## This would remove alleles where the minor allele occurs 0.88 times or less, which for this particular dataset means a 
 ## variant would be removed if there are no minor alleles? So if there is no alternate allele the variant is removed.
 
 bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.01' -O z -o F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
