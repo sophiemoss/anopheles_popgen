@@ -146,3 +146,5 @@ bcftools query -f '%CHROM\t%POS\n' F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi
 ## phased
 bcftools query -f '%CHROM\t%POS\n' 2022gambiaevcfphased.vcf.gz | awk '$1=="2L"' | wc -l
 4190559
+
+# A Mile thesis filtering: criteria: QD < 5; FS > 60; ReadPosRankSum < −8; HRun > 4. This is a higher QD filter than I have used above. 
