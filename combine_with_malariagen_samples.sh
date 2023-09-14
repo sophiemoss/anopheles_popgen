@@ -18,17 +18,7 @@ head ~/vo_agam_release/v3/metadata/general/AG1000G-GW/wgs_snp_data.csv | cut -f1
 # merge the malariagen VCF files
 bcftools merge --output-type z --output malariagen_gambiae_GB_GM-ABC_merged.vcf.gz *.vcf.gz
 
-# I got these errors, discuss with someone:
-
-bcftools merge --output-type z --output malariagen
-_gambiae_GB_GM-ABC_merged.vcf.gz *.vcf.gz
-[W::bcf_sr_add_reader] No BGZF EOF marker; file 'AJ0023-C.vcf.gz' may be truncated
-[W::hts_idx_load3] The index file is older than the data file: AJ0023-C.vcf.gz.tbi
-[W::hts_idx_load3] The index file is older than the data file: AJ0023-C.vcf.gz.tbi
-[W::vcf_parse] INFO 'Excess' is not defined in the header, assuming Type=String
-Error: The INFO field is not defined in the header: Excess
-
-## UP TO HERE. NEED TO COMBINE WITH MY SAMPLES.
+# combine with my samples
 
 ## bcftools concatenate is used for when you want to merge 2 or more VCFs with the exact same samples, 
 ## but for example, each VCF is for a single chromosome. 
@@ -36,4 +26,6 @@ Error: The INFO field is not defined in the header: Excess
 
 ## merge my samples with malariagen samples vcf when they have been aligned to Agam_P3 and have been combined into one large VCF
 
-bcftools merge 1.vcf.gz 2.vcf.gz -O z -o output.vcf.gz
+bcftools merge /mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022.2023_07_05.genotyped.vcf.gz malariagen_gambiae_GB_GM-ABC_merged.vcf.gz -O z -o gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
+
+# This merged file can be found here /mnt/storage11/sophie/malariagen_wgs
