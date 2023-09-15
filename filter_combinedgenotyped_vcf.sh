@@ -148,3 +148,4 @@ bcftools query -f '%CHROM\t%POS\n' 2022gambiaevcfphased.vcf.gz | awk '$1=="2L"' 
 4190559
 
 # A Mile thesis filtering: criteria: QD < 5; FS > 60; ReadPosRankSum < −8; HRun > 4. This is a higher QD filter than I have used above. 
+# Another phasing pipeline Delaneau et al 2023 - make use of read-backed and statistical phasing methods - seee Ag1000G 2017 paper.

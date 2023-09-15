@@ -233,3 +233,11 @@ tree_m<-nj(dist_m)
 write.tree(phy=tree_m, file="/mnt/storage9/sophie/basebijagospopgen/database/filtered/pca/2022_02_21_2_tree.newick")
 
 
+#### A.Miles thesis methodology for PCA:
+# SNPs for inclusion in principal components analysis were chosen by selecting biallelic
+# variants from within the regions 3R:1-37 Mbp and 3L:15-41 Mbp. Only variants with
+# minor allele frequency >= 1% were retained and each chromosome arm was randomly
+# down-sampled to 100,000 variants. I then pruned to remove SNPs in linkage disequilibrium,
+# excluding SNPs above an r2 threshold of 0.01 in moving windows of 500 SNPs with a step
+# size of 250 SNPs. SNPs from both chromosome arms were then concatenated, and PCA
+# was run following methods described in Patterson et al. (2006).

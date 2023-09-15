@@ -13,6 +13,12 @@ import os
 os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
 os.getcwd()
 
+## A.miles
+# IHS scans were
+# computed following methods described in Voight et al. (2006) as implemented in scikit-allel
+# version 0.21.1. For each population, SNPs with minor allele frequency above 5% were used.
+# IHS scores were normalised within each chromosome (2, 3, X).
+
 # %%
 ## have now phased VCFs using beagle
 
@@ -58,6 +64,8 @@ gt_res_samples
 # %% compute allele counts for resistant samples and create allele counts array
 ac_res = gt_res_samples.count_alleles(max_allele=8).compute()
 # %% filter for those that are segregating and biallelic and store as a boolean array
+# is.segregating() just finds variants where more than one allele is observed. is_non_segregating() finds non-segregating variants (where at most one allele is observed)
+
 res_seg_variants = ac_res.is_segregating() & ac_res.is_biallelic_01()
 # %% remove variants that are on Y_unplaced using a boolean mask
 chrom = callset['variants/CHROM'][:]
@@ -378,6 +386,12 @@ with open("sus_ihs_positions_above_threshold_5.txt", "w") as file:
 # create h1 and h2, selecting all variants instead of segregating variants only, which is what we did in iHS
 ## VCF is phased so we can convert genotype arrays made earlier to haplotype array
 
+## A.miles
+# XPEHH scans were computed following methods described in Sabeti et al. (2007)
+# as implemented in scikit-allel version 0.21.1. For each population comparison, SNPs
+# with a minor allele frequency greater than 5% in the union of both populations were
+# used. XPEHH scores were normalised within each chromosome (2, 3, X).
+
 h_sus = gt_sus_samples.to_haplotypes().compute()
 h_sus
 
@@ -467,6 +481,13 @@ with open("xpehh_positions_above_threshold_4.txt", "w") as file:
 # Calculate in 1000bp windows, look at the difference in H12
 # Calculate for resistant samples
 
+# A.miles:
+# To calibrate the window sizes I ran the H12 scans with a range of different window sizes, and chose
+# the smallest window size for which the mean value of H1 over all windows was below
+# 0.01.
+# Lucas et al (2023) to identify regions in which sewpt haplotypes are more frequent in resistant compared to susceptible individuals, they calculated
+# the different in H12 value between groups, deltaH12.
+
 h1, h12, h123, h2_h1 = allel.moving_garud_h(h_res_seg, 1000)
 
 # Calculate for susceptible samples
@@ -508,6 +529,7 @@ allel.pbs(ac_sus_samples, ac_res_samples, ac_con_samples, 1000)
 
 # make tajima D windows smaller for each chromosome
 # work out how to interpret H12 
-# work out how to interpret PBS
+# look at segregating SNPs for XP-EHH
+# output needs to print both chromosome AND position for areas with high iHS and XP-EHH
 # some kind of IBD?
 # GWAS?

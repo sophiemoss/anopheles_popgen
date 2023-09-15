@@ -2,7 +2,14 @@
 
 ######################## ADMIXTURE #########################
 
-## Admixture
+# ## A.Miles thesis methods:
+# The f3 and f4 tests were performed using a block size of 100,000 SNPs to estimate standard
+# error via a block jackknife procedure (Patterson et al., 2012). Z scores reported in the
+# results are computed by dividing the test statistic by the estimated standard error, and
+# thus indicate the number of standard deviations from zero.
+
+
+# Admixture
 ## sci-kit allel
 ## Need an AlleleCountsArray, from original zarr file.
 
