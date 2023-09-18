@@ -234,4 +234,35 @@ print("Done")
 
 
 
+# %% Take this information and make it into a csv so that it is easier to read
+
+input_file = "genotype_by_phenotype.txt"
+output_file = "genotype_by_phenotype_table.csv"
+
+with open(input_file, "r") as infile, open(output_file, "w") as outfile:
+    # Write header
+    outfile.write("CHR,POS,res_0/0,res_0/1,res_1/1,sus_0/0,sus_0/1,sus_1/1,other_0/0,other_0/1,other_1/1\n")
+    
+    line_data = {}
+    for line in infile:
+        line = line.strip()
+        if line.startswith("CHR:"):
+            if line_data:  # if there's already data, write it before starting a new row
+                outfile.write(f"{chr},{pos},{line_data['res_0/0']},{line_data['res_0/1']},{line_data['res_1/1']},{line_data['sus_0/0']},{line_data['sus_0/1']},{line_data['sus_1/1']},{line_data['other_0/0']},{line_data['other_0/1']},{line_data['other_1/1']}\n")
+                line_data = {}
+            chr, pos = line.split()[1], line.split()[3]
+        elif line:
+            key, value = line.split(":")
+            line_data[key.strip()] = value.strip()
+        else:
+            continue
+
+    # Write the last entry
+    if line_data:
+        outfile.write(f"{chr},{pos},{line_data['res_0/0']},{line_data['res_0/1']},{line_data['res_1/1']},{line_data['sus_0/0']},{line_data['sus_0/1']},{line_data['sus_1/1']},{line_data['other_0/0']},{line_data['other_0/1']},{line_data['other_1/1']}\n")
+
+print(f"Table written to {output_file}")
+
+
+
 # %%
