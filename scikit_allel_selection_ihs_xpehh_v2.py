@@ -1,8 +1,6 @@
 
 ######################## SELECTION STATISTICS #########################
 
-## SELECT SAMPLE POPULATION TO WORK WITH
-
 # some selection tests only support biallelic variants, not multiallelic. 
 # This filtered VCF should already be biallelic SNPs only.
 # Note that the zarr file should have been made from a phased vcf
@@ -531,5 +529,6 @@ allel.pbs(ac_sus_samples, ac_res_samples, ac_con_samples, 1000)
 # work out how to interpret H12 
 # look at segregating SNPs for XP-EHH
 # output needs to print both chromosome AND position for areas with high iHS and XP-EHH
-# some kind of IBD?
+# linkage disequilibrium?
+# hmmIBD (melas)
 # GWAS?

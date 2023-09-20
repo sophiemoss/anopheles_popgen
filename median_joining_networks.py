@@ -6,18 +6,29 @@
 
 bcftools view -r 2L:2358158-2431617 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o VGSC_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
-# vcf2fasta.py
+# subset reference to just be VGSC reference
 
-python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py --vcf VGSC_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --ref /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.56.chr.gff3 --snps-no-filt --threads 10
+samtools faidx Anopheles_gambiae.AgamP4.dna.toplevel.fa
+samtools faidx Anopheles_gambiae.AgamP4.dna.toplevel.fa 2L:2358158-2431617 > VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa
+samtools faidx VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa
 
-# for samples including The Gambia and Guinea-Bissau
+# vcf2fasta.py for just the VGSC vcf file, using ref file.
+
+python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py \
+    --vcf VGSC_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz \
+        --ref /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.dna.toplevel.fa --threads 10
+
+# for all samples, including Bijagos islands, The Gambia and mainland Guinea-Bissau
 
 bcftools view -r 2L:2358158-2431617 gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz -Oz -o VGSC_gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
 tabix -p vcf VGSC_gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
 
 # vcf2fasta.py
 
-python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py --vcf VGSC_gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz --ref /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.56.chr.gff3 --snps-no-filt --threads 10
+python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py \
+    --vcf VGSC_gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz \
+        --ref /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa \
+            --threads 10
 
 # use these fasta files in the R scripts to make haplotype networks
-# these fasta files are also needed for maximum likelihood trees
+# these fasta files are also needed for maximum likelihood trees (tree needed only for melas)
