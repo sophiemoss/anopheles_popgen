@@ -28,7 +28,7 @@ def main(args):
           axs[ChromoIndex].set_title(UniqueChromosome[ChromoIndex])
           axs[ChromoIndex].plot(x, y)
           axs[ChromoIndex].axhline(y=5, color='red', linestyle='dotted')
-          axs[ChromoIndex].set_ylim(0,50)
+          axs[ChromoIndex].set_ylim(0,2000) #changed y axis limit
   plt.subplots_adjust(hspace = 0.8)
   plt.tight_layout()
   plt.savefig('{}.png'.format(Title))

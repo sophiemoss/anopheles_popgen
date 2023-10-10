@@ -8,35 +8,28 @@
 ls *.g.vcf.gz | sed 's/.g.vcf.gz//' > samples.txt
 
 # Loop through the sample names in samples.txt
-while read -r sample; do
-    # Extract only mitochondrial positions and save as a mitochondrial-only VCF
-    bcftools view -r Mt "${sample}.g.vcf.gz" -O z -o "${sample}_mito_only.g.vcf.gz"
-    tabix -p vcf "${sample}_mito_only.g.vcf.gz"
-
-    # Convert to fasta file
-    python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py \
-        --vcf "${sample}_mito_only.g.vcf.gz" \
-        --ref "/mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Mt_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa" \
-        --threads 10 \
-        --whole-genome \
-        --snps-no-filt >> "${sample}.log" 2>&1
-done < samples.txt
-
-# troubleshooting for a single sample
-
-bcftools view -r Mt "NG-33833_5xres2_lib708244_10265_1.g.vcf.gz" -O z -o "NG-33833_5xres2_lib708244_10265_1_mito_only.g.vcf.gz"
-
-tabix -p vcf "NG-33833_5xres2_lib708244_10265_1_mito_only.g.vcf.gz"
-
-python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py \
-        --vcf "NG-33833_5xres2_lib708244_10265_1_mito_only.g.vcf.gz" \
-        --ref "/mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Mt_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa" \
-        --threads 10 \
-        --snps-no-filt \
-        --whole-genome
+#while read -r sample; do
+#    # Extract only mitochondrial positions and save as a mitochondrial-only VCF
+#    bcftools view -r Mt "${sample}.g.vcf.gz" -O z -o "${sample}_mito_only.g.vcf.gz"
+#    tabix -p vcf "${sample}_mito_only.g.vcf.gz"
 #
+#    # Convert to fasta file
+#    python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta.py \
+#        --vcf "${sample}_mito_only.g.vcf.gz" \
+#        --ref "/mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Mt_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa" \
+#        --threads 10 \
+#        --snps-no-filt >> "${sample}.log" 2>&1
+#done < samples.txt
 
-# Take fa files and combine them with fa files from ncbi to make big maximum likelihood tree
+# I needed to use a multi-sample VCF with the --whole-genome flag
+
+python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta_noiupac.py \
+        --vcf "mito_only_melas_2019_plusglobal.2023_07_25.genotyped.vcf.gz" \
+        --ref "/mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Mt_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa" \
+        --threads 10 \
+        --whole-genome
+
+# Take fa files and combine them with fa files from ncbi to make big maximum likelihood tree - done in /mnt/storage11/sophie/bijagos_mosq_wgs/anopheles_tree 06/10/2023
 # Align using muscle
 # Trim using aliview
 # Make tree
