@@ -28,7 +28,7 @@ def main(args):
             ax.plot(x, y, label=f'{csv_file}')
         
         ax.axhline(y=5, color='red', linestyle='dotted')
-        ax.set_ylim(0, 50)
+        ax.set_ylim(0, 9000) # made this very high for mitochondrial genome, make this smaller for other chromosomes
         ax.set_title(f"Coverage Plot - {chromosome}")
         ax.set_xlabel("Position")
         ax.set_ylabel("Mean Coverage")

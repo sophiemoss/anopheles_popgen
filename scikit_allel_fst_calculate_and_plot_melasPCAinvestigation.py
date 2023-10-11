@@ -3,7 +3,10 @@
 # run this script using
 # python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename
 # You make the zarr file with allel.vcf_to_zarr('phased_vcf_file_name.vcf.gz', 'output_name.zarr', fields='*', overwrite=True)
-allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
+
+# allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
+# python /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/scikit_allel_fst_calculate_and_plot_melasPCAinvestigation.py /mnt/storage11/sophie/bijagos_mosq_wgs/2019_melas_fq2vcf/genomics_database_melas2019plusglobal/genomics_database_melas2019plusglobal_vcf/melas2019plusglobal_vcf_filtering 2019_melas_phased.zarr 2L
+
 ######################## CALCULATING FST #########################
 # %% adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
 
@@ -54,22 +57,22 @@ def main(args):
         sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %%  IMPORT METADATA
-    df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
+    df_samples= pd.read_csv('metadata_melasplusglobal.csv',sep=',',usecols=['sample','country','year','species','island','pcagroup'])
     df_samples.head()
-    df_samples.groupby(by=['phenotype']).count()
+    df_samples.groupby(by=['pcagroup']).count()
     print("Imported metadata")
 
     # %%  choose sample populations to work with
-    pop1 = 'resistant'
-    pop2 = 'susceptible'
-    n_samples_pop1 = np.count_nonzero(df_samples.phenotype == pop1)
-    n_samples_pop2 = np.count_nonzero(df_samples.phenotype == pop2)
+    pop1 = 'group1'
+    pop2 = 'group2'
+    n_samples_pop1 = np.count_nonzero(df_samples.pcagroup == pop1)
+    n_samples_pop2 = np.count_nonzero(df_samples.pcagroup == pop2)
     print("Population 1:", pop1, "Number of samples in pop1:", n_samples_pop1, "Population 2:", pop2, "Number of samples in pop2:", n_samples_pop2)
 
     # %% dictonary mapping population names to sample indices
     subpops = {
-        pop1: df_samples[df_samples.phenotype == pop1].index,
-        pop2: df_samples[df_samples.phenotype == pop2].index,
+        pop1: df_samples[df_samples.pcagroup == pop1].index,
+        pop2: df_samples[df_samples.pcagroup == pop2].index,
     }
 
     # %% get allele counts
@@ -101,12 +104,12 @@ def main(args):
         sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %% PLOT FST using windowed weird and cockerham fst
-    print("Plotting Fst using allel.windowed_weir_cockerham_fst, window size 100000")
+    print("Plotting Fst using allel.windowed_weir_cockerham_fst, window size 500")
 
-    subpoplist = [list(subpops['resistant']),
-                    list(subpops['susceptible'])]
+    subpoplist = [list(subpops['group1']),
+                    list(subpops['group2'])]
 
-    fst, windows, counts = allel.windowed_weir_cockerham_fst(pos, genotype, subpoplist, size=100000)
+    fst, windows, counts = allel.windowed_weir_cockerham_fst(pos, genotype, subpoplist, size=500)
 
     # use the per-block average Fst as the Y coordinate
     y = fst
@@ -143,15 +146,15 @@ def main(args):
 
     # %% save Fst values over a certain threshold
     
-    fst_threshold = 0.6
+    fst_threshold = 0.9
     fst_over_threshold = [(window,value) for window, value in zip(windows,fst) if value >= fst_threshold]
 
     if fst_over_threshold:
-        with open('fst_greater_than_0.6_{pop1}_{pop2}_window_size_100000.txt', 'w') as fst_file:
+        with open('fst_greater_than_0.9_{pop1}_{pop2}_window_size_100000.txt', 'w') as fst_file:
             fst_file.write("Window (Genomic bps)\FST Value\n")
             for window, value in fst_over_threshold:
                 fst_file.write(f"{window[0]}-{window[1]}\t{value}\n")
-        print ("Saved FST values over 0.6 to fst_greater_than_0.6.txt")
+        print ("Saved FST values over 0.6 to fst_greater_than_0.9.txt")
     else:
         print("No FST values over the threshold were found")
 
@@ -160,8 +163,8 @@ def main(args):
     # PLOT FST using windowed weird and cockerham fst - try this, not sure if x = pos
     print("Calculating fst with blen = 1, this takes a bit longer to run as fst is being calculating for each variant instead of in windows")
 
-    subpoplist = [list(subpops['resistant']),
-                    list(subpops['susceptible'])]
+    subpoplist = [list(subpops['group1']),
+                    list(subpops['group2'])]
 
 
     # fst, se, vb, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=blen)
@@ -195,32 +198,32 @@ def main(args):
 
     # save fst figure
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    filename = f'fst_w&c_blen=1_{pop1}_{pop2}_{timestamp}.png'
+    filename = f'fst_w&c_blen=1_{pop1}_{pop2}_{timestamp}_{args.chromosome}.png'
     plt.savefig(filename)
-    print("Saving blen = 1 Fst plot")
+    print("Saving blen = 1 Fst plot - {args.chromosome}")
 
     # Here you can see that fst values are much higher when calculated for each position individually
 
-    print("Inspecting windowed Fst plot for maximum value")
+    print("Inspecting Fst plot for maximum value")
     max_value = max(fst_pervariant)
     max_index = np.argmax(fst_pervariant)
-    max_window = windows[max_index]
+    #max_window = windows[max_index]
 
     print("Maximum FST Value:", max_value)
-    print("Corresponding Window (Genomic bps):", max_window)
+    print("Maximum index:", max_index)
 
-    # Filter FST values greater than or equal to 0.6
-    fst_threshold = 0.6
+    # Filter FST values greater than or equal to 0.9
+    fst_threshold = 0.9
     fst_over_threshold = [(pos[i], value) for i, value in enumerate(fst_pervariant) if value >= fst_threshold]
 
     if fst_over_threshold:
-        with open('fst_individual_variants_greater_than_0.6.txt', 'w') as fst_file:
+        with open('fst_individual_variants_greater_than_0.9.txt', 'w') as fst_file:
             fst_file.write("Variant (Genomic bps)\tFST Value\n")
             for variant, value in fst_over_threshold:
                 fst_file.write(f"{variant}\t{value}\n")
-        print("Saved individual variant FST values over 0.6 to fst_individual_variants_greater_than_0.6.txt")
+        print("Saved individual variant FST values over 0.9 to fst_individual_variants_greater_than_0.9.txt")
     else:
-        print("No individual variant FST values over the threshold (FST >= 0.6) were found.")
+        print("No individual variant FST values over the threshold (FST >= 0.9) were found.")
 
 
 # arguments
