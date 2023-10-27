@@ -29,8 +29,10 @@ python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta_noiupac.py \
         --threads 10 \
         --whole-genome
 
-# Take fa files and combine them with fa files from ncbi to make big maximum likelihood tree - done in /mnt/storage11/sophie/bijagos_mosq_wgs/anopheles_tree 06/10/2023
-# Align using muscle
-# Trim using aliview
+# Take mito fa files for melas from Bijagos and melas from other countries, align this in aliview
+# Then add this to holly's aligned fasta file for the tree and realign
+# Trim where needed in aliview
 # Make tree
+raxml-ng --all --msa Sophie_anopheles_mito_2023_aligned.fa --model GTR --prefix Anopheles_mito_1023 --seed 736295 --bs-metric tbe --tree rand{1} --bs-trees 1000
+
 # View in iTOL

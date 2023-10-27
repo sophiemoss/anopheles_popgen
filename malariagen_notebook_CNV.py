@@ -38,8 +38,8 @@ hmm = ag3.cnv_hmm(region="2R", sample_sets="AG1000G-GM-C").set_index(samples="sa
 hmm
 
 # %% Example  - look at coverage data in these selected samples
-sample_names = ['AG0004-C','AG0018-C','AG0019-C','AG0049-C','AG0064-C','AG0043-C',
-                'AG0060-C','AG0318-C','AG0284-C','AG0354-C','AG0328-C','AG0291-C','AG0340-C','AG0303-C']
+sample_names = ['AG0004-C','AG0019-C','AG0318-C','AG0284-C','AG0354-C','AG0291-C',
+                'AG0049-C','AG0064-C','AG0043-C','AG0060-C','AG0340-C']
 
 # %% We can plot coverage in the Cyp6aa / Cyp6p cluster of genes, which have been shown to be involved in 
 # insecticide resistance. The plots below show this region of the genome, which is on chromosome 2R between
@@ -57,7 +57,7 @@ ag3.plot_cnv_hmm_heatmap(
     row_height=5
 );
 
-# %% Load the CNV discordant read calls. THese provide allel-specific CNV genotypes at a selection of genomic loci
+# %% Load the CNV discordant read calls. These provide allel-specific CNV genotypes at a selection of genomic loci
 # known to be involved in insecticide resistance
 
 discordant_read_calls = (

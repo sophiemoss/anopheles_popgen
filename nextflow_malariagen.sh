@@ -17,3 +17,17 @@ nextflow /mnt/storage11/sophie/ag1000g_genotyping_nf-v1.0.3/pipelines/snp_genoty
 # java version that appeared when running pipeline: openjdk 17.0.8-internal 2023-07-18
 
 # conda install gatk and nextflow at the same time so that the java files are compatible
+
+
+java -jar /mnt/storage11/sophie/bijagos_mosq_wgs/nextflow_malariagen/GenomeAnalysisTK-3.8-0-ge9d806836/GenomeAnalysisTK.jar \
+-T RealignerTargetCreator \
+-I NG-33833_c5_lib708272_10265_1.markdup.bam \
+-R /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.dna.toplevel.fa \
+-o NG-33833_c5_lib708272_10265_1.intervals
+
+## changed above to the code below:
+
+gatk3 -T RealignerTargetCreator \
+-I NG-33833_c5_lib708272_10265_1.markdup.bam \
+-R /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.dna.toplevel.fa \
+-o {}.intervals

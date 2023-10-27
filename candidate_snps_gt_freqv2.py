@@ -13,6 +13,9 @@
 # > 2429745_genotypes.txt
 # 
 
+### This script is used to check the genotypes of samples at each of the positions provided in the snp_positions.txt file
+### Change the vcf file name below and then run the script in the dir with the vcf and the snp_positions.txt file
+ 
 # %% Calculate genotype counts for sample set
 import subprocess
 import matplotlib

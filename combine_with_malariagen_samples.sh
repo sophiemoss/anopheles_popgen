@@ -28,4 +28,5 @@ bcftools merge --output-type z --output malariagen_gambiae_GB_GM-ABC_merged.vcf.
 
 bcftools merge /mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022.2023_07_05.genotyped.vcf.gz malariagen_gambiae_GB_GM-ABC_merged.vcf.gz -O z -o gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
 
-# This merged file can be found here /mnt/storage11/sophie/malariagen_wgs
+# This merged file can be found here /mnt/storage11/sophie/bijagos_mosq_wgs/malariagen_wgs
+# This vcf is not filtered yet
