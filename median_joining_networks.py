@@ -34,10 +34,25 @@ tabix -p vcf VGSC_gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
 
 ###### trying with phased vcf now instead of converting to a fasta file. Otherwise I can use the --whole genome option.
 
+
+##### 30th Oct 2023, with correctly filtered VCF #####
+
 # subset phased vcf to make phased vcf of just the VGSC gene
 
 bcftools view -r 2L:2358158-2431617 2022gambiaevcfphased.vcf.gz -Oz -o VGSC_only_2022gambiae_phased.vcf.gz
 
+# subset reference to just be VGSC reference
+
+samtools faidx Anopheles_gambiae.AgamP4.dna.toplevel.fa
+samtools faidx Anopheles_gambiae.AgamP4.dna.toplevel.fa 2L:2358158-2431617 > VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa
+samtools faidx VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa
+
+# make fasta files from VCF
+python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2fasta_noiupac.py \
+        --vcf "VGSC_only_2022gambiae_phased.vcf.gz" \
+        --ref "/mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/VGSC_only_Anopheles_gambiae.AgamP4.dna.toplevel.fa" \
+        --threads 10 \
+        --whole-genome
 
 
 
