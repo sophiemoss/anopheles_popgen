@@ -21,11 +21,11 @@ import pandas as pd
 import allel; print('scikit-allel', allel.__version__)
 
 # %% set working directory
-os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
+os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering')
 os.getcwd()
 
 # %%
-callset = zarr.open('2022gambiaevcfphased.zarr', mode='r')
+callset = zarr.open('2022_gambiae.zarr', mode='r')
 #callset.tree(expand=True)
 
 # %%
@@ -103,7 +103,7 @@ m = squareformr
 filtered_positions = [positions_2L[i] for i in indices_2L]
 
 # 1. Import the metadata
-snp_metadata = pd.read_csv('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps/allele_freqs/snp_positions.txt', sep='\t')
+snp_metadata = pd.read_csv('snp_positions.txt', sep='\t')
 
 # 2. Create a dictionary mapping the POS to the SNP
 pos_to_snp = dict(zip(snp_metadata['POS'], snp_metadata['SNP']))
@@ -121,8 +121,8 @@ ax.set_xticks(range(len(labels)))
 ax.set_yticks(range(len(labels)))
 ax.set_xticklabels(labels, rotation=90)  # Rotate x-labels for better visibility
 ax.set_yticklabels(labels)
-ax.set_xlabel("Variant Positions and SNPs")
-ax.set_ylabel("Variant Positions and SNPs")
+ax.set_xlabel("Variant Positions and SNPs, Chromosome 2L")
+ax.set_ylabel("Variant Positions and SNPs, Chromosome 2L")
 ax.set_title("Pairwise LD")
 
 plt.show()
