@@ -3,7 +3,7 @@
 # run this script using
 # python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename
 # You make the zarr file with allel.vcf_to_zarr('phased_vcf_file_name.vcf.gz', 'output_name.zarr', fields='*', overwrite=True)
-allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
+# allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
 ######################## CALCULATING FST #########################
 # %% adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
 
@@ -101,12 +101,12 @@ def main(args):
         sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %% PLOT FST using windowed weird and cockerham fst
-    print("Plotting Fst using allel.windowed_weir_cockerham_fst, window size 100000")
+    print("Plotting Fst using allel.windowed_weir_cockerham_fst, window size 1000")
 
     subpoplist = [list(subpops['resistant']),
                     list(subpops['susceptible'])]
 
-    fst, windows, counts = allel.windowed_weir_cockerham_fst(pos, genotype, subpoplist, size=100000)
+    fst, windows, counts = allel.windowed_weir_cockerham_fst(pos, genotype, subpoplist, size=1000)
 
     # use the per-block average Fst as the Y coordinate
     y = fst
@@ -125,7 +125,7 @@ def main(args):
 
     # save fst figure
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    filename = f'fst_w&c_windowed_{args.chromosome}_{pop1}_{pop2}_{timestamp}.png'
+    filename = f'fst_w&c_windowed_1000bp_{args.chromosome}_{pop1}_{pop2}_{timestamp}.png'
     plt.savefig(filename)
     print("Saving windowed Fst plot")
 
@@ -147,7 +147,7 @@ def main(args):
     fst_over_threshold = [(window,value) for window, value in zip(windows,fst) if value >= fst_threshold]
 
     if fst_over_threshold:
-        with open('fst_greater_than_0.6_{pop1}_{pop2}_window_size_100000.txt', 'w') as fst_file:
+        with open('fst_greater_than_0.6_{pop1}_{pop2}_window_size_1000.txt', 'w') as fst_file:
             fst_file.write("Window (Genomic bps)\FST Value\n")
             for window, value in fst_over_threshold:
                 fst_file.write(f"{window[0]}-{window[1]}\t{value}\n")
@@ -204,10 +204,10 @@ def main(args):
     print("Inspecting windowed Fst plot for maximum value")
     max_value = max(fst_pervariant)
     max_index = np.argmax(fst_pervariant)
-    max_window = windows[max_index]
+    #max_window = windows[max_index]
 
     print("Maximum FST Value:", max_value)
-    print("Corresponding Window (Genomic bps):", max_window)
+    #print("Corresponding Window (Genomic bps):", max_window)
 
     # Filter FST values greater than or equal to 0.6
     fst_threshold = 0.6

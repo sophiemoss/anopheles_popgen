@@ -1,4 +1,3 @@
-#Put this in a jupyter notebook?
 
 # Identifying possible CNVS from Lucas et al (2023) copy number breakpoints
 
@@ -80,7 +79,7 @@ done < samples.txt
 
 import pandas as pd
 
-# Load the discordant read guide
+# %% Load the discordant read guide
 discordant_df = pd.read_csv('discordant_read_guide.csv')
 
 # Group the guide by Duplication_ID
@@ -164,24 +163,31 @@ done < mapq10_samples.txt
 # should produce .mapq10_Normalised.csv for each sample
 ############# create mini-csv 
 
+
 ####### CREATE CSV OF SOFT-CLIPPING ##########
+
+# %% set working directory
+os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/malariagen_wgs/malariagen_GMABC-GW-bams')
+os.getcwd()
+
+# %%
 
 import pandas as pd
 
-# Load the discordant read guide
+# %% Load the discordant read guide
 discordant_df = pd.read_csv('discordant_read_guide.csv')
 
-# Group the guide by Duplication_ID
+# %% Group the guide by Duplication_ID
 grouped_discordant_df = discordant_df.groupby('Duplication_ID')
 
-# Read the sample names from a file
+# %%  Read the sample names from a file
 with open('mapq10_samples.txt', 'r') as file:
     samples = file.read().splitlines()
 
-# Initialize an empty dictionary to hold the results
+# %%  Initialize an empty dictionary to hold the results
 results_dict = {}
 
-# Iterate over the grouped DataFrame
+# %%  Iterate over the grouped DataFrame
 for dup_id, group in grouped_discordant_df:
     results_dict[f"{dup_id}_Pos_Range_Start"] = {}
     results_dict[f"{dup_id}_Pos_Range_End"] = {}
@@ -214,12 +220,13 @@ for dup_id, group in grouped_discordant_df:
                                   (clipping_df['ClipPos'] <= end_range[1])]['NormalisedClipping'].sum()
             results_dict[f"{dup_id}_Pos_Range_End"][sample] = end_sum
 
-# Convert the results dictionary to a DataFrame
+# %%  Convert the results dictionary to a DataFrame
 results_df = pd.DataFrame.from_dict(results_dict, orient='index')
-# Optional: if you want to convert the DataFrame such that Duplication_IDs are rows and Samples are columns
+# %%  Optional: if you want to convert the DataFrame such that Duplication_IDs are rows and Samples are columns
 results_df = results_df.transpose()
 
-# Save the results to a CSV file
+# %%  Save the results to a CSV file
 results_df.to_csv('test_clipping_summary.csv', index_label='Sample')
 
-##
+
+# %%

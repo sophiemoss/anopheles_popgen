@@ -43,11 +43,11 @@ genotype_all = allel.GenotypeArray(callset['calldata/GT'])
 all_chromosomes = callset['variants/CHROM'][:]
 all_positions = callset['variants/POS'][:]
 
-# 2. Filter for chromosome 2L
+# %% 2. Filter for chromosome 2L
 mask_2L = all_chromosomes == '2L'
 positions_2L = all_positions[mask_2L]
 
-# 3. Find the indices of desired positions in 2L
+# %% 3. Find the indices of desired positions in 2L
 desired_positions = [2390177,
 2391228,
 2399997,
@@ -73,10 +73,11 @@ desired_positions = [2390177,
 25429235] # extend the list with all your positions
 
 indices_2L = np.where(np.isin(positions_2L, desired_positions))[0]
+
 # this number may be smaller than the number of desired positions, 
 # as it will be the number of these positions that are found in the callset
 
-# 4. Subset the genotype array by adding the start index of 2L variants
+# %% 4. Subset the genotype array by adding the start index of 2L variants
 
 start_index_2L = np.where(mask_2L)[0][0]
 corrected_indices = indices_2L + start_index_2L
@@ -99,7 +100,7 @@ squareformr = squareform(r ** 2)
 # %% Plot a matrix of genotype linkage disequilibrium values between all pairs of variants.
 m = squareformr
 
-# Create a filtered list of positions that are actually present in your dataset
+# %% Create a filtered list of positions that are actually present in your dataset
 filtered_positions = [positions_2L[i] for i in indices_2L]
 
 # 1. Import the metadata
@@ -127,20 +128,48 @@ ax.set_title("Pairwise LD")
 
 plt.show()
 
-# %% look at the different matplotlib colour maps, all can be inverted using _r, for example plasma_r
-import numpy as np
-import matplotlib.pyplot as plt
+# %% Create dataframe of SNPs at positions present in my data
+# Use filtered_positions to create labels
+labels = [f"{pos} ({pos_to_snp.get(pos, 'SNP not found')})" for pos in filtered_positions]
 
-cmaps = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'cubehelix']
-n = len(cmaps)
+# Generate a DataFrame from the LD square matrix with the proper labels
+ld_df = pd.DataFrame(squareformr, index=labels, columns=labels)
 
-data = np.random.random((10,10))
-fig, axs = plt.subplots(1, n, figsize=(15, 3), constrained_layout=True)
-for ax, cmap in zip(axs, cmaps):
-    psm = ax.pcolormesh(data, cmap=cmap, rasterized=True, vmin=0, vmax=1)
-    fig.colorbar(psm, ax=ax)
-    ax.set_title(cmap)
-plt.show()
+# Display the DataFrame (in a Jupyter Notebook, this would render as a HTML table)
+ld_df
+
+# Optionally, save the DataFrame to a CSV file
+ld_df.to_csv('filtered_ld_values_table.csv')
+
+# %% Extract the sample IDs of the heterozygous samples
+
+# This assumes you have a DataFrame df_samples with a column 'sample' 
+# corresponding to the samples in the order they are in the genotype array.
+sample_ids = df_samples['sample'].values
+
+# This list will hold the heterozygous samples for each SNP
+heterozygous_samples_per_snp = []
+
+# Loop over each SNP in the subset
+for i, snp_genotypes in enumerate(subset_genotype_all):
+    # Find the indices of heterozygous samples for this SNP
+    heterozygous_indices = np.where((snp_genotypes[:, 0] != snp_genotypes[:, 1]) & (snp_genotypes[:, 0] >= 0))[0]
+    
+    # Retrieve the sample IDs corresponding to the heterozygous samples
+    heterozygous_samples = sample_ids[heterozygous_indices]
+    
+    # Store the heterozygous sample IDs in the list
+    heterozygous_samples_per_snp.append((filtered_positions[i], heterozygous_samples.tolist()))
+
+# Convert the results to a DataFrame for easier viewing and analysis
+df_heterozygous_samples = pd.DataFrame(heterozygous_samples_per_snp, columns=['Position', 'Heterozygous_Samples'])
+
+# Display the DataFrame
+print(df_heterozygous_samples)
+
+# Optionally, save to a CSV
+df_heterozygous_samples.to_csv('heterozygous_samples_per_snp.csv')
+
 
 
 # %% Sense check results of linkage disequilibrium by extracting the genotype data for the specific SNPs of interest (in this case, 2416980 and 2430424) and then manually inspecting the relationship between them. I
@@ -159,4 +188,19 @@ for sample_idx in range(genotype_2416980.shape[0]):
 # This prints the genotypes for each sample for the two SNPs, you can check manually if they are in linkage disequilibrium
 
 # or you can check with bcftools
-bcftools view -r 2L:2416980-2416980,2L:2430424-2430424 VGSC_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+# bcftools view -r 2L:2416980-2416980,2L:2430424-2430424 VGSC_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+# %% look at the different matplotlib colour maps, all can be inverted using _r, for example plasma_r
+import numpy as np
+import matplotlib.pyplot as plt
+
+cmaps = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'cubehelix']
+n = len(cmaps)
+
+data = np.random.random((10,10))
+fig, axs = plt.subplots(1, n, figsize=(15, 3), constrained_layout=True)
+for ax, cmap in zip(axs, cmaps):
+    psm = ax.pcolormesh(data, cmap=cmap, rasterized=True, vmin=0, vmax=1)
+    fig.colorbar(psm, ax=ax)
+    ax.set_title(cmap)
+plt.show()
