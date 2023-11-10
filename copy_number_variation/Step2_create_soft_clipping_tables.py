@@ -1,9 +1,4 @@
 ####### CREATE CSV OF SOFT-CLIPPING USING IPYTHON ##########
-
-# %% set working directory
-os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/malariagen_wgs/malariagen_GMABC-GW-bams')
-os.getcwd()
-
 # %%
 
 import pandas as pd
@@ -15,7 +10,7 @@ discordant_df = pd.read_csv('discordant_read_guide.csv')
 grouped_discordant_df = discordant_df.groupby('Duplication_ID')
 
 # %%  Read the sample names from a file
-with open('mapq10_samples.txt', 'r') as file:
+with open('samples.txt', 'r') as file:
     samples = file.read().splitlines()
 
 # %%  Initialize an empty dictionary to hold the results
@@ -32,7 +27,7 @@ for dup_id, group in grouped_discordant_df:
         results_dict[f"{dup_id}_Pos_Range_End"][sample] = 0
 
         # Load the clipping data for the sample
-        clipping_df = pd.read_csv(f'{sample}_sorted.mapq10.Clipping.mapq10_Normalised.csv')
+        clipping_df = pd.read_csv(f'{sample}.Clipping._Normalised.csv')
 
         # Sum the NormalisedClipping for the start range
         start_group = group[group['Type'] == 'Start']
@@ -61,5 +56,3 @@ results_df = results_df.transpose()
 
 # %%  Save the results to a CSV file
 results_df.to_csv('clipping_summary.csv', index_label='Sample')
-
-# %%

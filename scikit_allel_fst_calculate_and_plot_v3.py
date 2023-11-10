@@ -50,7 +50,7 @@ def main(args):
     if len(pos_all)==len(genotype_all):
         print("Length of positions and genotypes in the genotype array are the same, script continuing")
     else:
-        print("Something is wrong with the genotype_all array as the lenght of pos_all and genotype_all are different. Stopping script.")
+        print("Something is wrong with the genotype_all array as the length of pos_all and genotype_all are different. Stopping script.")
         sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
     # %%  IMPORT METADATA

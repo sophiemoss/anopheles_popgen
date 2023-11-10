@@ -26,7 +26,7 @@ tabix -p vcf bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 ########### FILTER 2: Filter samples to keep those with 40% of genome with > 10x coverage, and min-ac=1 so that all variants that remain are still variants after sample removal
 # I have identified samples that are above this threshold using my basic WGS stats
 # create file with samples to keep: sample_40_10.txt
-bcftools view -S sample_40_10.txt bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --min-ac=1 -Oz -o miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+bcftools view -S samples_40_10.txt bi_snps_chr_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --min-ac=1 -Oz -o miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 
 tabix -p vcf miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
 

@@ -115,7 +115,7 @@ Combined = Combined[['Contig',
 					 'Coverage']]
 
 Combined['NormalisedClipping'] = (Combined['ClippedCount'] * 100)/Combined['Coverage'] 
-Combined.to_csv(OutF.replace('.temp','.mapq10_Normalised.csv'),index=None)
+Combined.to_csv(OutF.replace('.temp','._Normalised.csv'),index=None)
 
 
 
