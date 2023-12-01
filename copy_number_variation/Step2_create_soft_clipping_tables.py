@@ -1,4 +1,8 @@
 ####### CREATE CSV OF SOFT-CLIPPING USING IPYTHON ##########
+
+# %% create samples.txt file
+# Create a list of sample names
+# ls *.Clipping._Normalised.csv | sed 's/.Clipping._Normalised.csv//' > samples.txt
 # %%
 
 import pandas as pd
@@ -55,4 +59,4 @@ results_df = pd.DataFrame.from_dict(results_dict, orient='index')
 results_df = results_df.transpose()
 
 # %%  Save the results to a CSV file
-results_df.to_csv('clipping_summary.csv', index_label='Sample')
+results_df.to_csv('clipping_summary_B.csv', index_label='Sample')

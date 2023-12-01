@@ -15,16 +15,16 @@ ls *.bam > bam_files.txt
 
 # EXAMPLE COMMANDS FOR SINGLE SAMPLE 
 # 1. Sort all bam files using samtools
-#samtools sort AJ0126-C.bam > AJ0126-C.sorted.bam
+samtools sort AJ0126-C.bam > AJ0126-C.sorted.bam
 
 # 2. Filter bam files for mapping quality >= 10
-#samtools view -b -q 10 AJ0126-C.sorted.bam > AJ0126-C.sorted_mapq10.bam
+samtools view -b -q 10 AJ0126-C.sorted.bam > AJ0126-C.sorted_mapq10.bam
 
 # 3. Create coverage file using samtools depth
-#samtools depth -aa AJ0126-C.sorted_mapq10.bam > AJ0126-C.sorted_mapq10.coverage
+samtools depth -aa AJ0126-C.sorted_mapq10.bam > AJ0126-C.sorted_mapq10.coverage
 
 # 4. Create sam file from sorted bam,
-#samtools view -h AJ0126-C.sorted_mapq10.bam -o AJ0126-C.sorted_mapq10.sam
+samtools view -h AJ0126-C.sorted_mapq10.bam -o AJ0126-C.sorted_mapq10.sam
 
 # Loop above steps for multiple samples:
 # Sort bam files to make sorted bam file for each sample
@@ -62,6 +62,6 @@ ls *.sam | sed 's/.sam//' > samples.txt
 
 while read -r sample; do
     # Run the ClipIdentifier.py script
-    python /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/copy_number_variation/ClipIdentifier.py "$sample.sam" "$sample_sorted.coverage"   
+    python /mnt/storage11/sophie/gitrepos/anopheles_popgen/copy_number_variation/ClipIdentifier.py "$sample.sam" "$sample.coverage"   
     echo "Processed $sample with ClipIdentifier.py"
 done < samples.txt
