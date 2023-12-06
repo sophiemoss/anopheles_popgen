@@ -152,3 +152,7 @@ bcftools query -f '%CHROM\t%POS\n' 2022gambiaevcfphased.vcf.gz | awk '$1=="2L"' 
 # 0002.vcf will contain variants common to both files
 
 bcftools isec -p QD2_QD5_comparison -Ov F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz /mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps_QD2/F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+
+## SnpEff annotation of filtered VCF (this one was unphased, could do either)
+snpEff Anopheles_gambiae F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz > F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.ann.vcf.gz

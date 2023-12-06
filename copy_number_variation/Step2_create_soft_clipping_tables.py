@@ -59,4 +59,4 @@ results_df = pd.DataFrame.from_dict(results_dict, orient='index')
 results_df = results_df.transpose()
 
 # %%  Save the results to a CSV file
-results_df.to_csv('clipping_summary_B.csv', index_label='Sample')
+results_df.to_csv('clipping_summary_C.csv', index_label='Sample')
