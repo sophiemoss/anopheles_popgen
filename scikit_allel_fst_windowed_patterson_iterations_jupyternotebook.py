@@ -60,7 +60,7 @@ df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','y
 df_samples.head()
 df_samples.groupby(by=['phenotype']).count()
 print("Imported metadata")
-# %%  choose sample populations to work with
+# %% choose sample populations to work with
 pop1 = 'resistant'
 pop2 = 'susceptible'
 n_samples_pop1 = np.count_nonzero(df_samples.phenotype == pop1)
@@ -141,10 +141,10 @@ print("Saving histogram of Fst plot")
 # Zip together windows and fst values
 zipped_windows_fst = list(zip(real_windows, real_fst))
 # Find the maximum fst value and its corresponding window
-max_fst_window = max(zipped_windows_fst, key=lambda x: real_x[1])
+max_fst_window = max(zipped_windows_fst, key=lambda real_x: real_x[1])
 max_window, max_fst = max_fst_window
 # Find the minimum fst value and its corresponding window
-min_fst_window = min(zipped_windows_fst, key=lambda x: real_x[1])
+min_fst_window = min(zipped_windows_fst, key=lambda real_x: real_x[1])
 min_window, min_fst = min_fst_window
 # Printing or further processing
 print(f"Maximum Fst value: {max_fst}, Window: {max_window}")
@@ -166,15 +166,15 @@ else:
     print("No FST values over the histogram threshold were found")
 
 # %% #################################################################
-##################################################################
-#################         PERMUTATIONS              ##############
-##################################################################
-##################################################################
+#################         PERMUTATIONS              ##################
+######################################################################
+
 # IMPORT METADATA
 df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
 df_samples.head()
 df_samples.groupby(by=['phenotype']).count()
 print("Imported metadata")
+
 # %%  do permutations of samples into pop1 and pop2
 permuted_fst_values = []
 for i in range(20):
@@ -240,7 +240,7 @@ percentile_99th_values = []
 # Number of windows
 num_windows = len(permuted_fst_values[0][0])
 
-# Iterate over each window
+# %% Iterate over each window
 for i in range(num_windows):
     # Gather Fst values for this window from each permutation
     fst_values_for_window = [permuted[1][i] for permuted in permuted_fst_values]
@@ -253,6 +253,39 @@ for i in range(num_windows):
     # Store the window and the 99th percentile value as a tuple containing window_boundaries and 99th percentile value
     percentile_99th_values.append((window_boundaries, percentile_99th))
 
+# percentile_99th_values contains each window, and then the value of the 99th percentile of that window
+
 # %% Check if any of the real Fst values are above the 99th percentile value for each window
+# to do this, I need to compare zipped_windows_fst with percentile_99th_values
+# need to check if the value for Fst in zipped_windows_fst is greater than the percentile_99 in the percentile_99th_values list
+
+# Initialize an empty list to store the data
+significant_data = []
+
+# Iterate through each window and its Fst value in zipped_windows_fst
+for window_real_fst in zipped_windows_fst:
+    window, real_fst_value = window_real_fst
+
+    # Find the corresponding 99th percentile value for the window
+    for window_percentile_values in percentile_99th_values:
+        percentile_window, percentile_99th = window_percentile_values
+        if np.array_equal(window, percentile_window):
+            # Check if the Fst value is greater than the 99th percentile value
+            if real_fst_value > percentile_99th:
+                # Convert window array to a string representation for storage
+                window_str = '-'.join(map(str, window))
+                # Add the significant values to the list as a dictionary
+                significant_data.append({'Window': window_str, 'Fst Value': real_fst_value, '99th Percentile': percentile_99th})
+
+# Create DataFrame from the list
+significant_values_df = pd.DataFrame(significant_data)
+
+# Display or save the DataFrame
+print(significant_values_df)
+
+# save to a csv
+significant_values_df.to_csv('significant_fst_values.csv', index=False)
 
 
+
+# %%

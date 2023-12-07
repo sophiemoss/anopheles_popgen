@@ -155,4 +155,8 @@ bcftools isec -p QD2_QD5_comparison -Ov F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_m
 
 
 ## SnpEff annotation of filtered VCF (this one was unphased, could do either)
-snpEff Anopheles_gambiae F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz > F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.ann.vcf.gz
+snpEff Anopheles_gambiae F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz > F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.ann.vcf
+bgzip F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.ann.vcf
+tabix -p vcf F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.ann.vcf.gz
+
+## Can now use the extract snp info from vcf python script to extract all of the SNP information into readable format
