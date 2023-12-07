@@ -1,7 +1,6 @@
 ## scikitallel_workflow
-# /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/scikit_allel_fst_calculate_and_plot_v2.py
 # run this script using
-# python scikit_allel_fst_calculate_and_plot.py /path/to/working/directory /path/to/callset.zarr chromosomename
+# python scriptname.py /path/to/working/directory /path/to/callset.zarr chromosomename
 # You make the zarr file with allel.vcf_to_zarr('phased_vcf_file_name.vcf.gz', 'output_name.zarr', fields='*', overwrite=True)
 # allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
 ######################## CALCULATING FST #########################
@@ -280,12 +279,28 @@ for window_real_fst in zipped_windows_fst:
 # Create DataFrame from the list
 significant_values_df = pd.DataFrame(significant_data)
 
-# Display or save the DataFrame
-print(significant_values_df)
-
 # save to a csv
 significant_values_df.to_csv('significant_fst_values.csv', index=False)
 
+# %% remove noise using minimum value * 3 using the threshold set earlier
 
+# Assuming hist_fst_threshold is already defined and significant_values_df is your DataFrame
 
-# %%
+# bring significant values back from csv
+# Read the CSV file into a DataFrame
+significant_values_df = pd.read_csv('significant_fst_values_2L.csv')
+# Display the first few rows of the DataFrame to verify
+print(significant_values_df.head())
+# Convert the 'Fst Value' column to numeric, in case it's not already
+significant_values_df['Fst Value'] = pd.to_numeric(significant_values_df['Fst Value'])
+
+# Filter the DataFrame to only include rows where 'Fst Value' is greater than hist_fst_threshold
+filtered_df = significant_values_df[significant_values_df['Fst Value'] > hist_fst_threshold]
+
+# Display the filtered DataFrame
+print(filtered_df.head())
+
+# Save the filtered DataFrame to a CSV file, if needed
+filtered_df.to_csv('significant_fst_values_2L_filtered.csv', index=False)
+
+# %% plot these on the combined fst graph somehow
