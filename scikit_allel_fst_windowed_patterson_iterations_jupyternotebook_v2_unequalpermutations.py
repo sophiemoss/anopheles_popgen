@@ -4,6 +4,9 @@
 # You make the zarr file with allel.vcf_to_zarr('phased_vcf_file_name.vcf.gz', 'output_name.zarr', fields='*', overwrite=True)
 # allel.vcf_to_zarr('2019_melas_phased.vcf.gz', '2019_melas_phased.zarr', fields='*', overwrite=True)
 
+# example command
+# python /mnt/storage11/sophie/gitrepos/anopheles_popgen/scikit_allel_fst_windowed_patterson_iterations_jupyternotebook_v2_unequalpermutations.py . 2022_gambiae.zarr 2L
+
 ######################## CALCULATING FST #########################
 # %% adapted jupyter notebook from http://alimanfoo.github.io/2015/09/21/estimating-fst.html
 
@@ -161,7 +164,7 @@ hist_fst_threshold = [(window,value) for window, value in zip(real_windows, real
 if hist_fst_threshold:
     with open(f'fst_values_over_hist_threshold_{pop1}_{pop2}_{chromosome}_window_size_1000.csv', 'w') as fst_file:
         # Writing the header
-        fst_file.write("Window_Start,Window_End,FST_Value\n")
+        fst_file.write("Window_Start,Window_End,Fst_Value\n")
         
         # Writing data
         for window, value in hist_fst_threshold:
@@ -187,9 +190,8 @@ for i in range(200):
     # Shuffle the indices
     np.random.shuffle(indices)
     # Split the indices into two groups
-    half_length = len(indices) // 2
-    pop1_indices = indices[:half_length]
-    pop2_indices = indices[half_length:]
+    pop1_indices = indices[:23]
+    pop2_indices = indices[23:33]
     subpops = {
         'permutation_pop1': pop1_indices,
         'permutation_pop2': pop2_indices,
@@ -214,7 +216,7 @@ for i in range(200):
         print("Something is wrong with the genotype_all array as the length of pos_all and genotype_all are different. Stopping script.")
         sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
     
-    # Calcalate and plot fst using windowed patterson fst
+    # Calcalate fst using windowed patterson fst
     fst, windows, counts = allel.windowed_patterson_fst(pos, ac1, ac2, size=1000)   # use the per-block average Fst as the Y coordinate
     print(f"Calculated fst using allel.windowed_patterson_fst, window size 1000 for permutation {i}")
     # Store Fst values for this iteration
@@ -234,14 +236,14 @@ sns.despine(ax=ax, offset=5)
 for windows,fst in permuted_fst_values:
     x = [np.mean(w) for w in windows]
     ax.plot(x, fst, 'k-', lw=.5, color='grey', alpha=0.5)  # grey color
-# Plot real fst values in red
-ax.plot(real_x, real_fst, 'r-', lw=1.5, label='Real FST')  # 'r-' for red line
+# Plot real fst values in blue
+ax.plot(real_x, real_fst, color='#04B8D2', lw=1.5, label='Real Fst')  # 'r-' for red line
 
 ax.set_ylabel('Fst value')
 ax.set_xlabel(f'Chromosome {chromosome} position (bp)')
 ax.set_xlim(0, pos.max())
 plt.legend()
-plt.savefig('combined_fst_permutations_plot.png')
+plt.savefig(f'combined_fst_uneven_permutations_plot_{chromosome}.png')
 plt.show()
 
 # %% Calculate the 99th percentile of the permuted values in each window
@@ -286,7 +288,7 @@ hist_99_significant_data = []
 # Iterate through each row in filtered_df
 for index, row in real_fst_values_over_hist_threshold.iterrows():
     window = (row['Window_Start'], row['Window_End'])
-    real_fst_value = row['FST_Value']
+    real_fst_value = row['Fst_Value']
 
     # Find the corresponding 99th percentile value for the window
     for window_percentile_values in percentile_99th_values:
@@ -329,8 +331,8 @@ for windows, fst in permuted_fst_values:
     x = [np.mean(w) for w in windows]
     ax.plot(x, fst, 'k-', lw=.5, color='grey', alpha=0.5)
 
-# Plot real fst values in red
-ax.plot(real_x, real_y, 'r-', lw=1.5, label='Real FST')
+# Plot real fst values in blue
+ax.plot(real_x, real_y, color='#04B8D2', lw=1.5, label='Real Fst')
 
 # Highlight significant and filtered Fst values with blue dots
 ax.scatter(hist_99_significant_values_df['Window Midpoint'], hist_99_significant_values_df['Fst Value'], color='blue', s=10, label='Significant FST')
@@ -341,6 +343,8 @@ ax.set_xlim(0, pos.max())
 # Adding legend
 plt.legend()
 # Save the figure
-plt.savefig('combined_fst_permutations_with_highlights_permutations.png')
+plt.savefig(f'combined_fst_permutations_with_highlights_{chromosome}.png')
 # Show the plot
 plt.show()
+
+# %%
