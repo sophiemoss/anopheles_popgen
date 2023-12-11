@@ -26,7 +26,7 @@ from datetime import datetime
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "2R"
+chromosome = "2L"
 
 # %% open callset file
 callset = zarr.open(callset_file, mode='r')
@@ -80,11 +80,11 @@ subpops = {
 acs = genotype_all.count_alleles_subpops(subpops)
 acs
 
-# %% filter out variants that aren't segregating in the union of the two selected populations. 
-# also filter out multiallelic variants (these should already be removed during filtering of vcf but just to check)
+# %% filter out non-segregating and filter out multiallelic variants (these should already be removed during filtering of vcf but just to check)
 acu = allel.AlleleCountsArray(acs[pop1][:] + acs[pop2][:])
 flt = acu.is_segregating() & (acu.max_allele() == 1)
-print('Filtered out variants that are not segretating, or are not biallelic. Now retaining', np.count_nonzero(flt), 'SNPs')
+#flt = (acu.max_allele() == 1)
+print('Filtered out variants that are not biallelic. Now retaining', np.count_nonzero(flt), 'SNPs')
 
 # %% create the new genotype array with the variants that passed the filters
 pos = pos_all.compress(flt)
@@ -104,14 +104,19 @@ significant_windows['start'], significant_windows['end'] = zip(*significant_wind
 significant_windows['start'] = significant_windows['start'].astype(float).astype(int)
 significant_windows['end'] = significant_windows['end'].astype(float).astype(int)
 
-# Initialize a dictionary to hold haplotypes for each window
+# %% Make a new window range which is 10,000bp wide, with the window of interest in the middle
+significant_windows['wide_start'], significant_windows['wide_end'] = zip(*significant_windows['Window'].str.split('-').tolist())
+significant_windows['wide_start'] = significant_windows['start'].astype(float).astype(int)-4500
+significant_windows['wide_end'] = significant_windows['end'].astype(float).astype(int)+4500
+
+# %% Initialize a dictionary to hold haplotypes for each window
 window_haplotypes = {}
 
-# Iterate over each window, subset genotype array to make one for just 
+# %% Iterate over each window, subset genotype array to make one for just 
 # that window, then convert it to a haplotype array, so you have a haplotype array for each window
 for _, row in significant_windows.iterrows():
-    start = row['start']
-    end = row['end']
+    start = row['wide_start']
+    end = row['wide_end']
 
     # Subset the genotype data for this window
     window_mask = (pos >= start) & (pos <= end)
@@ -123,9 +128,9 @@ for _, row in significant_windows.iterrows():
     # Make a dictionary called window_haplotypes which stores each window and it's corresponding haplotype array
     window_haplotypes[f"{start}-{end}"] = haplotypes_window
 
-# %% To select a particular array:
+# To select a particular array:
 # Specify the window range of interest
-# window_of_interest = "2194206-2195205"
+# window_of_interest = "5811206-5812205"
 # Access the haplotype array for this window
 # specific_haplotype_array = window_haplotypes[window_of_interest]
 # Now, 'specific_haplotype_array' contains the haplotype data for the specified window
@@ -139,11 +144,10 @@ for window_range, hap_array in window_haplotypes.items():
     # Print the window range and the number of haplotypes
     print(f"Window {window_range} has {num_haplotypes} haplotypes.")
 
-# %% If there is a window with over 20 haplotypes, make a dendrogram and save the linkage matrix
+# If there is a window with over 20 haplotypes, make a dendrogram and save the linkage matrix
 
-# Create dendrogram function
+# %% Create dendrogram function
 
-# %% 
 def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='right', size=(7,5)):
     """
     Takes a 2D numpy array of values, performs hierarchical clustering, 
@@ -165,7 +169,7 @@ def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='ri
         labels=[' '.join(map(str, row)) for row in haplotypes], 
         ax=ax
     )
-    
+
     # tidy up the plot
     if orient == "right":
         ax.set_xlabel("Distance (no. SNPs)") 
@@ -181,10 +185,12 @@ def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='ri
 # %% Dictionary to store linkage matrices for each window
 linkage_matrices = {}
 
+import scipy
+
 # %% Iterate through each window in the window_haplotypes dictionary
 for window_range, hap_array in window_haplotypes.items():
     # Check if the number of haplotypes is 20 or more
-    if hap_array.shape[0] >= 20:
+    if hap_array.shape[0] >= 600:
         print(f"Creating dendrogram for window {window_range} with {hap_array.shape[0]} haplotypes.")
         
         # If there are more than 20 haplotypes, create a dendrogram of haplotype clusters, 
@@ -210,10 +216,10 @@ for window_range, hap_array in window_haplotypes.items():
 # when the dendrogram is cut at 0.001, and check if any of these clusters contain 
 # over 20 haplotypes
 
-import scipy.cluster.hierarchy as sch
-import numpy as np
-
 height_cutoff = 0.001  # Height cutoff for clustering
+
+# Dictionary to store large clusters for each window
+large_clusters_dict = {}
 
 # Iterate over each linkage matrix
 for window_range, matrix in linkage_matrices.items():
@@ -227,15 +233,19 @@ for window_range, matrix in linkage_matrices.items():
     for i, cluster_label in enumerate(clusters):
         clustered_haplotypes[cluster_label].append(i)
 
-    # Check for clusters with more than 20 haplotypes and print information
-    large_clusters = {cluster: haplotypes for cluster, haplotypes in clustered_haplotypes.items() if len(haplotypes) > 10}
+    # Identify clusters with more than 20 haplotypes
+    large_clusters = {cluster: haplotypes for cluster, haplotypes in clustered_haplotypes.items() if len(haplotypes) > 20}
     
+    # Store large clusters if they exist
     if large_clusters:
         print(f"Window {window_range} has the following large clusters:")
+        large_clusters_dict[window_range] = large_clusters
         for cluster, haplotype_indices in large_clusters.items():
             num_haplotypes = len(haplotype_indices)
             print(f"Cluster {cluster} contains {num_haplotypes} haplotypes: {haplotype_indices}")
     else:
         print(f"There are no clusters containing over 20 haplotypes in window {window_range}")
 
-# %%
+# Now, `large_clusters_dict` contains all the large clusters for each window
+
+# %% Test if any of these clusters are significantly associated with the resistant phenotype and give a p value

@@ -93,6 +93,7 @@ ac2 = allel.AlleleCountsArray(acs[pop2].compress(flt, axis=0)[:, :2])
 genotype = genotype_all.compress(flt, axis=0)
 genotype
 print("Created genotype array")
+
 # check that pos and genotype are the same size
 if len(pos)==len(genotype):
     print("Length of positions and genotypes in the genotype array are the same, script continuing")
@@ -346,5 +347,3 @@ plt.legend()
 plt.savefig(f'combined_fst_permutations_with_highlights_{chromosome}.png')
 # Show the plot
 plt.show()
-
-# %%

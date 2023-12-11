@@ -26,7 +26,7 @@ from datetime import datetime
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "2R"
+chromosome = "2L"
 
 # %% open callset file
 callset = zarr.open(callset_file, mode='r')
@@ -80,11 +80,11 @@ subpops = {
 acs = genotype_all.count_alleles_subpops(subpops)
 acs
 
-# %% filter out variants that aren't segregating in the union of the two selected populations. 
-# also filter out multiallelic variants (these should already be removed during filtering of vcf but just to check)
+# %% filter out multiallelic variants (these should already be removed during filtering of vcf but just to check)
 acu = allel.AlleleCountsArray(acs[pop1][:] + acs[pop2][:])
-flt = acu.is_segregating() & (acu.max_allele() == 1)
-print('Filtered out variants that are not segretating, or are not biallelic. Now retaining', np.count_nonzero(flt), 'SNPs')
+#flt = acu.is_segregating() & (acu.max_allele() == 1)
+flt = (acu.max_allele() == 1)
+print('Filtered out variants that are not biallelic. Now retaining', np.count_nonzero(flt), 'SNPs')
 
 # %% create the new genotype array with the variants that passed the filters
 pos = pos_all.compress(flt)
@@ -104,10 +104,10 @@ significant_windows['start'], significant_windows['end'] = zip(*significant_wind
 significant_windows['start'] = significant_windows['start'].astype(float).astype(int)
 significant_windows['end'] = significant_windows['end'].astype(float).astype(int)
 
-# Initialize a dictionary to hold haplotypes for each window
+# %% Initialize a dictionary to hold haplotypes for each window
 window_haplotypes = {}
 
-# Iterate over each window, subset genotype array to make one for just 
+# %% Iterate over each window, subset genotype array to make one for just 
 # that window, then convert it to a haplotype array, so you have a haplotype array for each window
 for _, row in significant_windows.iterrows():
     start = row['start']
@@ -123,9 +123,9 @@ for _, row in significant_windows.iterrows():
     # Make a dictionary called window_haplotypes which stores each window and it's corresponding haplotype array
     window_haplotypes[f"{start}-{end}"] = haplotypes_window
 
-# %% To select a particular array:
+# To select a particular array:
 # Specify the window range of interest
-# window_of_interest = "2194206-2195205"
+# window_of_interest = "5811206-5812205"
 # Access the haplotype array for this window
 # specific_haplotype_array = window_haplotypes[window_of_interest]
 # Now, 'specific_haplotype_array' contains the haplotype data for the specified window
@@ -139,11 +139,10 @@ for window_range, hap_array in window_haplotypes.items():
     # Print the window range and the number of haplotypes
     print(f"Window {window_range} has {num_haplotypes} haplotypes.")
 
-# %% If there is a window with over 20 haplotypes, make a dendrogram and save the linkage matrix
+# If there is a window with over 20 haplotypes, make a dendrogram and save the linkage matrix
 
-# Create dendrogram function
+# %% Create dendrogram function
 
-# %% 
 def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='right', size=(7,5)):
     """
     Takes a 2D numpy array of values, performs hierarchical clustering, 
@@ -165,7 +164,7 @@ def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='ri
         labels=[' '.join(map(str, row)) for row in haplotypes], 
         ax=ax
     )
-    
+
     # tidy up the plot
     if orient == "right":
         ax.set_xlabel("Distance (no. SNPs)") 
@@ -180,6 +179,8 @@ def dendrogram(haplotypes, linkage_method='single', metric='hamming', orient='ri
 
 # %% Dictionary to store linkage matrices for each window
 linkage_matrices = {}
+
+import scipy
 
 # %% Iterate through each window in the window_haplotypes dictionary
 for window_range, hap_array in window_haplotypes.items():
