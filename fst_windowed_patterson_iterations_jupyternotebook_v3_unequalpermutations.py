@@ -26,7 +26,8 @@ from datetime import datetime
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "2L"
+chromosome = "2R"
+os.chdir(working_directory)
 
 # %% open callset file
 callset = zarr.open(callset_file, mode='r')
@@ -330,20 +331,25 @@ sns.despine(ax=ax, offset=5)
 # Plot each set of permuted Fst values in grey
 for windows, fst in permuted_fst_values:
     x = [np.mean(w) for w in windows]
-    ax.plot(x, fst, 'k-', lw=.5, color='grey', alpha=0.5)
+    ax.plot(x, fst, lw=.5, color='grey', alpha=0.5, zorder=1)
 
 # Plot real fst values in blue
-ax.plot(real_x, real_y, color='#04B8D2', lw=1.5, label='Real Fst')
+ax.plot(real_x, real_y, color='#04B8D2', lw=1.5, label='Real Fst', zorder=2)
 
-# Highlight significant and filtered Fst values with blue dots
-ax.scatter(hist_99_significant_values_df['Window Midpoint'], hist_99_significant_values_df['Fst Value'], color='blue', s=10, label='Significant FST')
 # Setting labels and title
 ax.set_ylabel('Fst value')
 ax.set_xlabel(f'Chromosome {chromosome} position (bp)')
 ax.set_xlim(0, pos.max())
+
+# Highlight significant and filtered Fst values with blue dots
+ax.scatter(hist_99_significant_values_df['Window Midpoint'], hist_99_significant_values_df['Fst Value'], color='blue', s=15, edgecolor='black', label='Significant FST', zorder=3)
+
 # Adding legend
 plt.legend()
+plt.tight_layout()
 # Save the figure
-plt.savefig(f'combined_fst_permutations_with_highlights_{chromosome}.png')
+plt.savefig(f'combined_fst_uneven_permutations_with_highlights_{chromosome}.png')
 # Show the plot
 plt.show()
+
+# %%

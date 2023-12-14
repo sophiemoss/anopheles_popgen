@@ -305,7 +305,7 @@ print(f"The number of fst values which are over the hist threshold and over the 
 hist_99_significant_values_df = pd.DataFrame(hist_99_significant_data)
 # Save to a CSV
 hist_99_significant_values_df.to_csv(f'significant_fst_values_hist_99_{pop1}_{pop2}_{chromosome}.csv', index=False)
-print("Saved these fst values to a csv called 'significant_fst_values_hist_99_...")
+print("Saved these fst values to a csv called 'significant_fst_values_hist_99_(chrom)")
 
 
 # %% 

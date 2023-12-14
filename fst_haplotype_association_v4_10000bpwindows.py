@@ -21,13 +21,15 @@ import allel
 import sys
 from datetime import datetime
 import scipy
+import statsmodels.api as sm
 
 ## Create genotype array using the same code that was used when doing the fst calculations
 
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "2L"
+chromosome = "2R"
+os.chdir(working_directory)
 
 # %% open callset file
 callset = zarr.open(callset_file, mode='r')
@@ -105,7 +107,7 @@ else:
     sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
 # %% Bring in windows of significance as a pandas dataframe 
-significant_windows=pd.read_csv(f'significant_fst_values_hist_99_resistant_susceptible_{chromosome}.csv',sep=',')
+significant_windows=pd.read_csv(f'/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/fst_patterson/significant_fst_values_hist_99_resistant_susceptible_{chromosome}.csv',sep=',')
 print("Brought in the windows that were found significant during the fst analysis")
 
 # Split the window ranges into start and end and convert them to integers in case they're floats
@@ -192,7 +194,7 @@ for window in subsetted_genotype_arrays_by_window.keys():
     else:
         print(f"Length mismatch in window {window}. Genotype length: {len(genotype_array)}, Position length: {len(pos_array)}")
 
-print("You have subset the genotype array for each significant window. The length of the subsetted genotype arrays and their corresponding position arrays are the same. Hurrah! Crack on")
+print("You have subset the genotype array and the pos array for each significant window. The length of the subsetted genotype arrays and their corresponding position arrays are the same. Hurrah! Crack on")
 
 ## Now I want to look at haplotypes, so I want to convert each of these genotype arrays to a haplotype array.
 ## Haplotype arrays represent the specific combination of alleles along a single chromosome.
@@ -292,11 +294,11 @@ for window, hap_array in window_haplotype_arrays.items():
 
 print("Finished making dendrograms")
 
-
 # %% Identify clusters of haplotypes with distance 1% of the maximum distance
 # Most of those 'clusters' only contain one snp, or a couple of snps, as they need to be close together in distance
 # Filter through them to only pull out clusters that have more than 5 haplotypes
 # Assuming window_linkage_matrices is a dictionary containing your linkage matrices
+
 window_clusters_with_many_haplotypes = {}
 for window, linkage_matrix in window_linkage_matrices.items():
     # Determine the maximum distance in the linkage matrix
@@ -332,7 +334,17 @@ print("Finished processing all windows.")
 print("Saved clusters with many haplotypes as a dictionary:")
 print(window_clusters_with_many_haplotypes)
 
-## Now want to test these clusters of haplotypes to see if they are associated with the resistance phenotype.
+
+
+
+
+###### think fine to here ######
+
+
+
+
+
+# %% Now want to test these clusters of haplotypes to see if they are associated with the resistance phenotype.
 ## For each window, for each cluster_with_more_than_5, extract the haplotypes from the haplotype_array. Call these extracted_haplotypes
 ## Then identify for each sample (each sample has two haplotypes) if they match one of the extracted_haplotypes.
 ## If the sample has two of the extracted_haplotypes at that window, give that sample the score 2
@@ -340,42 +352,7 @@ print(window_clusters_with_many_haplotypes)
 ## If the sample has none of the extracted_haplotypes at that window, give that sample the score 0
 ## All samples must fit into one of these categories, and some must have these haplotypes
 
-###### Works fine up to here ############
-
 # %% Extract the haplotypes of interest
-# Dictionary to store the extracted haplotypes for each cluster in each window
-extracted_haplotypes_by_window_cluster = {}
-
-for window, clusters in window_clusters_with_many_haplotypes.items():
-    # Retrieve the haplotype array for this window
-    haplotype_array = window_haplotype_arrays[window]
-    
-    # Dictionary to store extracted haplotypes for each cluster in this window
-    extracted_haplotypes = {}
-
-    for cluster_id, haplotype_indices in clusters.items():
-        # Extract only the specified haplotypes for this cluster
-        # Remember that each haplotype is a column in the haplotype array
-        cluster_haplotypes = haplotype_array[:, haplotype_indices]
-
-        # Store the extracted haplotypes
-        extracted_haplotypes[cluster_id] = cluster_haplotypes
-    
-    # Add the extracted haplotypes for this window to the main dictionary
-    extracted_haplotypes_by_window_cluster[window] = extracted_haplotypes
-
-# Print the extracted haplotypes
-print("Extracted haplotypes for each cluster in each window:")
-for window, clusters in extracted_haplotypes_by_window_cluster.items():
-    print(f"Window: {window}")
-    for cluster_id, haplotypes in clusters.items():
-        print(f" - Cluster {cluster_id}:")
-        for haplotype_index in haplotypes:
-            print(f"   - Haplotype {haplotype_index}:")
-            print(haplotype_array[:, haplotype_index])
-
-
-## %% Look in each sample to see which ones have the haplotypes that have clustered
 
 # Dictionary to store the score tables for each window
 window_score_tables = {}
@@ -386,32 +363,40 @@ for window, clusters in window_clusters_with_many_haplotypes.items():
     haplotype_array = window_haplotype_arrays[window]
 
     # Prepare a DataFrame to store scores for each sample
-    scores_df = pd.DataFrame(columns=['phenotype', 'score_0', 'score_1', 'score_2'])
+    scores_df = pd.DataFrame(columns=['sample_id', 'phenotype', 'score'])
 
-    # For each sample, count the matching haplotypes
-    # This is the critical part of the code that does the scoring
-    for sample_id, phenotype in df_samples[['sample', 'phenotype']].values:
-        sample_haplotypes = haplotype_array[:, df_samples[df_samples['sample'] == sample_id].index.tolist()].T
-        score = sum(any(np.array_equal(haplotype, haplotype_array[:, i]) for i in cluster) for cluster in clusters.values() for haplotype in sample_haplotypes)
-        scores_df = pd.concat([scores_df, pd.DataFrame({'phenotype': [phenotype], f'score_{score}': [1]})], ignore_index=True)
+    # Extract haplotypes of interest for this window
+    haplotypes_of_interest = []
+    for cluster_id, haplotype_indices in clusters.items():
+        for index in haplotype_indices:
+            haplotypes_of_interest.append(haplotype_array[:, index])
 
-    # Group by phenotype and sum scores
-    aggregated_scores = scores_df.fillna(0).groupby('phenotype').sum().reset_index()
+    # For each sample, check if it has any of the haplotypes of interest
+    for index, sample_row in df_samples.iterrows():
+        sample_id = sample_row['sample']
+        phenotype = sample_row['phenotype']
 
-    # Reorder rows if needed
-    aggregated_scores['phenotype'] = pd.Categorical(aggregated_scores['phenotype'], categories=['resistant', 'susceptible', 'control'], ordered=True)
-    aggregated_scores.sort_values('phenotype', inplace=True)
+        # Get the indices of this sample's haplotypes in the haplotype array
+        sample_indices = np.where(df_samples['sample'] == sample_id)[0]
+        sample_haplotypes = haplotype_array[:, sample_indices].T  # Transpose to get haplotypes as rows
 
-    # Store the table
-    window_score_tables[f"{window}_table"] = aggregated_scores
+        # Count matches with haplotypes of interest
+        score = sum(any(np.array_equal(sample_haplotype, haplotype_of_interest) 
+                        for haplotype_of_interest in haplotypes_of_interest)
+                    for sample_haplotype in sample_haplotypes)
 
-    # Print the table for this window
-    print(f"Table for window {window}:")
-    print(aggregated_scores)
+        # Create a temporary DataFrame and concatenate it with scores_df
+        temp_df = pd.DataFrame({'sample_id': [sample_id], 'phenotype': [phenotype], 'score': [score]})
+        scores_df = pd.concat([scores_df, temp_df], ignore_index=True)
+
+    # Store the scores DataFrame in the window_score_tables dictionary
+    window_score_tables[window] = scores_df
+
+
+############# need to get scores_df correct #####
+
 
 # %% Save these tables to a csv for this chromosome
-import pandas as pd
-
 # Concatenate all the tables with an additional column for the window
 all_tables = pd.DataFrame()
 for window, table in window_score_tables.items():
@@ -426,63 +411,48 @@ all_tables = all_tables[column_order]
 filename = f"haplotype_cluster_scores_{chromosome}.csv"
 all_tables.to_csv(filename, index=False)
 
-print(f"Saved haplotype cluster tables to '{filename}'")
+print(f"Saved haplotype cluster score tables to '{filename}'")
 
 # %% Now run a GLM (logistic regression) with logit link function to test whether any of the 
 # haplotype clusters are associated with phenotype 
-# need to reformat the data to be able to run the glm
 import pandas as pd
-import numpy as np
 import statsmodels.api as sm
 
 # Load the data from the CSV file
 filename = f"haplotype_cluster_scores_{chromosome}.csv"  # Replace with your file path
 df = pd.read_csv(filename)
 
-# Convert to long format
-long_format = pd.DataFrame()
-for index, row in df.iterrows():
-    for score in range(3):
-        temp_df = pd.DataFrame({
-            'Window': row['Window'],
-            'Phenotype': row['phenotype'],
-            'Score': score,
-            'Count': row[f'score_{score}']
-        }, index=[0] * row[f'score_{score}'])
-        long_format = pd.concat([long_format, temp_df], ignore_index=True)
-
-# Filter out controls and rows with count 0
-long_format = long_format[(long_format['Phenotype'] != 'control') & (long_format['Count'] > 0)]
-
-# Convert phenotype to binary (1 for resistant, 0 for susceptible)
-long_format['Phenotype'] = long_format['Phenotype'].map({'resistant': 1, 'susceptible': 0})
+# Filter out control samples and prepare the data for the model
+filtered_df = df[df['phenotype'] != 'control']
+filtered_df['Phenotype'] = filtered_df['phenotype'].map({'resistant': 1, 'susceptible': 0})
 
 # Define the filename for the text file to store model summaries
-summary_filename = 'model_summaries.txt'
+summary_filename = f'model_summaries_{chromosome}.txt'
 
 # Run the model for each window and save summaries
 with open(summary_filename, 'w') as summary_file:
-    for window in long_format['Window'].unique():
-        window_data = long_format[long_format['Window'] == window]
+    for window in filtered_df['Window'].unique():
+        window_data = filtered_df[filtered_df['Window'] == window]
+        
+        # Check if there are enough observations for the model
+        if window_data.shape[0] < 2:
+            summary_file.write(f"Insufficient data for window: {window}\n\n")
+            continue
 
         # Define the model
-        model = sm.GLM(window_data['Phenotype'], sm.add_constant(window_data['Score']), family=sm.families.Binomial())
+        model = sm.GLM(window_data['Phenotype'], sm.add_constant(window_data['score']), family=sm.families.Binomial())
 
         # Fit the model
         result = model.fit()
 
-        # Print the results
+        # Print and write the results
         print(f"Analyzing window: {window}")
         print(result.summary())
-
-        # Write the results to the file
         summary_file.write(f"Analyzing window: {window}\n")
         summary_file.write(result.summary().as_text())
-        summary_file.write("\n\n")  # Add some space between summaries
+        summary_file.write("\n\n")
 
 print(f"Model summaries saved to '{summary_filename}'")
 
-## Note: to determine which phenotype a significant haplotype cluster is associated with, 
-# look at the sign of the significant coefficient for Score. 
-# Positive indicates a higher likelihood of being "resistant," and 
-# negative suggests a higher likelihood of being "susceptible."
+# Note: A positive coefficient for 'score' indicates a higher likelihood of being "resistant",
+# while a negative coefficient suggests a higher likelihood of being "susceptible".

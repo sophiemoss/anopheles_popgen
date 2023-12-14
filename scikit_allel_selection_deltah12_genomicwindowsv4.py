@@ -20,18 +20,31 @@ import sys
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-## convert phased, filtered, VCF file to zarr file
-# %%
-# allel.vcf_to_zarr('2022gambiaevcfphased.vcf.gz', '2022gambiaevcfphased.zarr', fields='*', overwrite=True)
+# %% define chromosome
+chromosome = '2L'
 
 # %%
 callset = zarr.open('2022_gambiae.zarr', mode='r')
 #callset.tree(expand=True)
 
-# %%
-## convert zarr file to genotype array
-gt = allel.GenotypeDaskArray(callset['calldata/GT'])
-print(gt.shape)
+# %% filter by chromosome and make a gt array and a pos array for the chromosome
+
+chromosome_filter = callset['variants/CHROM'][:] == chromosome
+sliced_pos_array = callset['variants/POS'][np.where(chromosome_filter)[0]]
+print("Chromosome being analysed:", chromosome)
+print("Number of variants in chrom:", len(sliced_pos_array))
+
+sliced_gt_array = allel.GenotypeDaskArray(callset['calldata/GT'][np.where(chromosome_filter)[0]])
+
+# check length of pos_all and genotype_all are the same
+print("Length of pos_all variable:",len(sliced_pos_array))
+print("Length of genotype_all variable:",len(sliced_gt_array))
+
+if len(sliced_pos_array)==len(sliced_gt_array):
+    print("Length of positions and genotypes in the genotype array are the same, script continuing")
+else:
+    print("Something is wrong with the genotype_all array as the length of pos_all and genotype_all are different. Stopping script.")
+    sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
 # %%
 ## import metadata
@@ -45,9 +58,9 @@ sus_samples = df_samples[df_samples['phenotype'] == 'susceptible'].index.values
 all_samples = df_samples.index.values
 
 # %% select genotypes for variants and store as a genotype dask array
-gt_res_samples = gt.take(res_samples, axis=1)
-gt_sus_samples = gt.take(sus_samples, axis=1)
-gt_all_samples = gt.take(all_samples, axis=1)
+gt_res_samples = sliced_gt_array.take(res_samples, axis=1)
+gt_sus_samples = sliced_gt_array.take(sus_samples, axis=1)
+gt_all_samples = sliced_gt_array.take(all_samples, axis=1)
 
 # %% compute allele counts for samples and create allele counts array
 ac_res = gt_res_samples.count_alleles(max_allele=8).compute()
@@ -62,11 +75,11 @@ sus_seg_variants = ac_sus.is_biallelic_01()
 all_seg_variants = ac_all.is_biallelic_01()
 
 # %% remove variants that are on Y_unplaced using a boolean mask
-chrom = callset['variants/CHROM'][:]
-exclude_chrom = 'Y_unplaced'
-res_seg_variants = res_seg_variants & (chrom != exclude_chrom)
-sus_seg_variants = sus_seg_variants & (chrom != exclude_chrom)
-all_seg_variants = all_seg_variants & (chrom != exclude_chrom)
+# chrom = callset['variants/CHROM'][:]
+# exclude_chrom = 'Y_unplaced'
+# res_seg_variants = res_seg_variants & (chrom != exclude_chrom)
+# sus_seg_variants = sus_seg_variants & (chrom != exclude_chrom)
+# all_seg_variants = all_seg_variants & (chrom != exclude_chrom)
 
 # %% make an allele counts array from this
 ac_res_seg = ac_res.compress(res_seg_variants, axis=0)
@@ -78,25 +91,29 @@ gt_res_seg = gt_res_samples.compress(res_seg_variants, axis = 0)
 gt_sus_seg = gt_sus_samples.compress(sus_seg_variants, axis = 0)
 gt_all_seg = gt_all_samples.compress(all_seg_variants, axis = 0)
 
-# %% convert this genotype array to haplotype array (we can do this because the original data was phased)
-
+# %% convert this genotype array to haplotype array 
+# (we can do this because the original data was phased)
 h_res_seg = gt_res_seg.to_haplotypes().compute()
 h_sus_seg = gt_sus_seg.to_haplotypes().compute()
 h_all_seg = gt_all_seg.to_haplotypes().compute()
 
 # %% also store chromosome of each variant as we need this for shading the plots later
-chrom = callset['variants/CHROM'][:]
-chrom_res_seg = chrom.compress(res_seg_variants, axis=0)
-chrom_sus_seg = chrom.compress(sus_seg_variants, axis=0)
-chrom_all_seg = chrom.compress(all_seg_variants, axis=0)
+#chrom = callset['variants/CHROM'][:]
+#chrom_res_seg = chrom.compress(res_seg_variants, axis=0)
+#chrom_sus_seg = chrom.compress(sus_seg_variants, axis=0)
+#chrom_all_seg = chrom.compress(all_seg_variants, axis=0)
 
-# %% we need variant positions
-pos = callset['variants/POS'][:]
-pos_res_seg = pos.compress(res_seg_variants, axis=0)
-pos_sus_seg = pos.compress(sus_seg_variants, axis = 0)
-pos_all_seg = pos.compress(all_seg_variants, axis = 0)
+# %% we need variant positions from the sliced_pos_array
+pos_res_seg = sliced_pos_array.compress(res_seg_variants, axis=0)
+pos_sus_seg = sliced_pos_array.compress(sus_seg_variants, axis = 0)
+pos_all_seg = sliced_pos_array.compress(all_seg_variants, axis = 0)
 
-# %% variants could have multiple variants at the same genomic position, 
+# %% sort these variant position arrays
+np.sort(pos_all_seg)
+np.sort(pos_sus_seg)
+np.sort(pos_all_seg)
+
+# %% samples could have multiple variants at the same genomic position, 
 # which causes problems for some selection tests in scikit-allel. 
 # Let's check if there any of these.
 count_multiple_variants = np.count_nonzero(np.diff(pos_res_seg == 0))
@@ -114,6 +131,185 @@ if count_multiple_variants == 0:
 else:
     print("There are multiple variants at the same genomic position. This causes problems with some selection tests using sci-kit allel.")
     sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
+
+### Prepare windows for H12 calculation. I want to calculate in windows of 1000 genomic basepairs across the genome, not in windows of 1000 variants
+# this means there is a bit more pre-processing to do before I run the function from scikit-allel.
+
+# %% Define genomic window size
+window_size = 1000 
+
+# %% Map variants to 1000 genomic basepair windows.
+from tqdm import tqdm
+
+def map_variants_to_windows(pos_array, window_size=1000):
+    """
+    Maps variants to genomic windows, assuming positions start at 1.
+    Includes a progress bar for tracking the mapping process.
+    """
+    window_variants = {}
+    max_position = pos_array[-1]
+    num_windows = (max_position - 1) // window_size + 1
+
+    for window_idx in tqdm(range(num_windows), desc="Mapping Variants"):
+        window_start = window_idx * window_size + 1
+        window_end = window_start + window_size
+        variants_in_window = [i for i, pos in enumerate(pos_array) if window_start <= pos < window_end]
+        window_variants[window_idx] = variants_in_window
+
+    return window_variants
+
+# %% Applying the function to your position arrays
+window_size = 1000  # 1000 base pairs
+
+# and save output as a pickle file
+import pickle
+
+variants_in_windows_res = map_variants_to_windows(pos_res_seg, window_size)
+with open('variants_in_windows_res.pickle', 'wb') as f:
+    pickle.dump(variants_in_windows_res, f)
+
+variants_in_windows_sus = map_variants_to_windows(pos_sus_seg, window_size)
+with open('variants_in_windows_sus.pickle', 'wb') as f:
+    pickle.dump(variants_in_windows_sus, f)
+
+
+# Now, variants_in_windows_res, variants_in_windows_sus, and variants_in_windows_all
+# contain the mapping of variants to 1000 bp windows for each sample set.
+
+# %% Load the data
+with open('variants_in_windows_res.pickle', 'rb') as f:
+    variants_in_windows_res = pickle.load(f)
+
+with open('variants_in_windows_sus.pickle', 'rb') as f:
+    variants_in_windows_sus = pickle.load(f)
+
+# %%  Extract haplotype arrays for each window of 1000bp
+
+# Write the function
+
+def extract_haplotype_data_for_windows(h, variants_in_windows):
+    """
+    Extracts haplotype data for each window.
+
+    Parameters:
+        h: array_like
+            Haplotype array of shape (n_variants, n_haplotypes).
+        variants_in_windows: dict
+            A dictionary mapping window indices to lists of variant indices.
+
+    Returns:
+        A dictionary where keys are window indices and values are the haplotype
+        data for each window.
+    """
+    haplotype_data_per_window = {}
+
+    for window_idx, variant_indices in variants_in_windows.items():
+        if variant_indices:  # Check if the list is not empty
+            haplotype_data_per_window[window_idx] = h[variant_indices, :]
+        else:
+            # Handle windows with no variants
+            haplotype_data_per_window[window_idx] = None
+
+    return haplotype_data_per_window
+
+
+# %% Extract the haplotypes
+h = h_res_seg
+#'h' is your haplotype array made earlier and variants_in_windows was also made earlier
+haplotype_data_windows_res = extract_haplotype_data_for_windows(h, variants_in_windows_res)
+
+# %% Do allel.moving_garud_h for each window of variants
+
+def compute_h12_for_windows(haplotype_data_per_window):
+    """
+    Computes H12 statistics for each window.
+
+    Parameters:
+        haplotype_data_per_window: dict
+            A dictionary where keys are window indices and values are the haplotype
+            data for each window.
+
+    Returns:
+        A dictionary where keys are window indices and values are the computed
+        H12 statistics for each window.
+    """
+    h12_results = {}
+
+    for window_idx, haplotype_data in haplotype_data_per_window.items():
+        if haplotype_data is not None:
+            # Compute H12 for the current window
+            h1, h12, h123, h2_h1 = allel.moving_garud_h(haplotype_data, size=len(haplotype_data))
+            h12_results[window_idx] = h12[0]  # Assuming you want to store only the H12 value
+        else:
+            # Handle windows with no variants
+            h12_results[window_idx] = None
+
+    return h12_results
+
+# %% Do this for resistant samples
+# Assuming 'haplotype_data_windows_res' is your extracted haplotype data for resistant variants
+h12_windows_res = compute_h12_for_windows(haplotype_data_windows_res)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # %% H12 was calculated using phased biallelic SNPs in 1000 bp windows along the genome
 # SNP windows, using the garuds_h function in scikit-allel. 200 permutations in which penhotype labels randomly permuted and value recalculated?
