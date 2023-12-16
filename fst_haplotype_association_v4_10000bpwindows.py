@@ -22,6 +22,7 @@ import sys
 from datetime import datetime
 import scipy
 import statsmodels.api as sm
+print('scikit-allel', allel.__version__)
 
 ## Create genotype array using the same code that was used when doing the fst calculations
 
@@ -334,84 +335,51 @@ print("Finished processing all windows.")
 print("Saved clusters with many haplotypes as a dictionary:")
 print(window_clusters_with_many_haplotypes)
 
+#%% 
+
+def hap_to_mosq(hap_idx):
+    '''convert from haplotype index back to mosquitoes to discover which mosquitoes have which haplotypes'''
+    return int(hap_idx/2)
+
+# %%
+def selected_hap_array_to_mosq_array(selected_haps):
+    mosq_array = [0]*42
+    for hap_idx in selected_haps:
+        mosq_idx = hap_to_mosq(hap_idx)
+        mosq_array[mosq_idx]+=1
+    return mosq_array
 
 
+# %%
+map_mosquitoes = {}
+for window,cluster_dict in window_clusters_with_many_haplotypes.items():
+    map_mosquitoes[window]={}
+    for cluster,selected_haps in cluster_dict.items():
+        map_mosquitoes[window][cluster] = selected_hap_array_to_mosq_array(selected_haps)
+print(map_mosquitoes)
+    
+# %% 
+def map_mosq_index_to_phenotype(mosq_idx):
+    phenotype = df_samples.iloc[mosq_idx]["phenotype"]
+    return phenotype
+
+## make phenotype_scores with window, cluster, phenotype
+# %% 
+phenotype_scores = {}
+for window,cluster_dict in map_mosquitoes.items():
+    phenotype_scores[window] = {}
+    for cluster, haplotypes_mapped_per_mosquito in cluster_dict.items():
+        phenotype_scores[window][cluster] = {}
+        for mosq_idx, haplotypes_mapped_per_mosquito_score in enumerate(haplotypes_mapped_per_mosquito):
+            mosq_phenotype = map_mosq_index_to_phenotype(mosq_idx)
+            if mosq_phenotype in phenotype_scores[window][cluster]:
+                phenotype_scores[window][cluster][mosq_phenotype]+= haplotypes_mapped_per_mosquito_score
+            else:
+                phenotype_scores[window][cluster][mosq_phenotype] = haplotypes_mapped_per_mosquito_score
+
+print(phenotype_scores)
 
 
-###### think fine to here ######
-
-
-
-
-
-# %% Now want to test these clusters of haplotypes to see if they are associated with the resistance phenotype.
-## For each window, for each cluster_with_more_than_5, extract the haplotypes from the haplotype_array. Call these extracted_haplotypes
-## Then identify for each sample (each sample has two haplotypes) if they match one of the extracted_haplotypes.
-## If the sample has two of the extracted_haplotypes at that window, give that sample the score 2
-## If the sample has one of the extracted_haplotypes at that window, give that sample the score 1
-## If the sample has none of the extracted_haplotypes at that window, give that sample the score 0
-## All samples must fit into one of these categories, and some must have these haplotypes
-
-# %% Extract the haplotypes of interest
-
-# Dictionary to store the score tables for each window
-window_score_tables = {}
-
-# Iterate over each window
-for window, clusters in window_clusters_with_many_haplotypes.items():
-    # Extract the haplotype array for this window
-    haplotype_array = window_haplotype_arrays[window]
-
-    # Prepare a DataFrame to store scores for each sample
-    scores_df = pd.DataFrame(columns=['sample_id', 'phenotype', 'score'])
-
-    # Extract haplotypes of interest for this window
-    haplotypes_of_interest = []
-    for cluster_id, haplotype_indices in clusters.items():
-        for index in haplotype_indices:
-            haplotypes_of_interest.append(haplotype_array[:, index])
-
-    # For each sample, check if it has any of the haplotypes of interest
-    for index, sample_row in df_samples.iterrows():
-        sample_id = sample_row['sample']
-        phenotype = sample_row['phenotype']
-
-        # Get the indices of this sample's haplotypes in the haplotype array
-        sample_indices = np.where(df_samples['sample'] == sample_id)[0]
-        sample_haplotypes = haplotype_array[:, sample_indices].T  # Transpose to get haplotypes as rows
-
-        # Count matches with haplotypes of interest
-        score = sum(any(np.array_equal(sample_haplotype, haplotype_of_interest) 
-                        for haplotype_of_interest in haplotypes_of_interest)
-                    for sample_haplotype in sample_haplotypes)
-
-        # Create a temporary DataFrame and concatenate it with scores_df
-        temp_df = pd.DataFrame({'sample_id': [sample_id], 'phenotype': [phenotype], 'score': [score]})
-        scores_df = pd.concat([scores_df, temp_df], ignore_index=True)
-
-    # Store the scores DataFrame in the window_score_tables dictionary
-    window_score_tables[window] = scores_df
-
-
-############# need to get scores_df correct #####
-
-
-# %% Save these tables to a csv for this chromosome
-# Concatenate all the tables with an additional column for the window
-all_tables = pd.DataFrame()
-for window, table in window_score_tables.items():
-    table['Window'] = window
-    all_tables = pd.concat([all_tables, table], ignore_index=True)
-
-# Reorder columns so 'Window' is the first column
-column_order = ['Window'] + [col for col in all_tables.columns if col != 'Window']
-all_tables = all_tables[column_order]
-
-# Save to CSV
-filename = f"haplotype_cluster_scores_{chromosome}.csv"
-all_tables.to_csv(filename, index=False)
-
-print(f"Saved haplotype cluster score tables to '{filename}'")
 
 # %% Now run a GLM (logistic regression) with logit link function to test whether any of the 
 # haplotype clusters are associated with phenotype 
