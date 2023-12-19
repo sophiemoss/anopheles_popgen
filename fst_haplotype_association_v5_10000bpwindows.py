@@ -22,6 +22,7 @@ import sys
 from datetime import datetime
 import scipy
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 print('scikit-allel', allel.__version__)
 
 ## Create genotype array using the same code that was used when doing the fst calculations
@@ -29,7 +30,7 @@ print('scikit-allel', allel.__version__)
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "2R"
+chromosome = "3R"
 os.chdir(working_directory)
 
 # %% open callset file
@@ -297,7 +298,7 @@ print("Finished making dendrograms")
 
 # %% Identify clusters of haplotypes with distance 1% of the maximum distance
 # Most of those 'clusters' only contain one snp, or a couple of snps, as they need to be close together in distance
-# Filter through them to only pull out clusters that have more than 5 haplotypes
+# Filter through them to only pull out clusters that have more than 20 haplotypes
 # Assuming window_linkage_matrices is a dictionary containing your linkage matrices
 
 window_clusters_with_many_haplotypes = {}
@@ -320,8 +321,8 @@ for window, linkage_matrix in window_linkage_matrices.items():
             clustered_haplotypes[cluster_label] = []
         clustered_haplotypes[cluster_label].append(i)
 
-    # Print out the clusters with more than 5 haplotypes or a message if no such clusters are found
-    clusters_with_more_than_five = {k: v for k, v in clustered_haplotypes.items() if len(v) > 5}
+    # Print out the clusters with more than 10 haplotypes or a message if no such clusters are found
+    clusters_with_more_than_five = {k: v for k, v in clustered_haplotypes.items() if len(v) >= 20}
 
     # Only add to the dictionary if there are clusters with more than five haplotypes
     if clusters_with_more_than_five:
@@ -335,35 +336,37 @@ print("Finished processing all windows.")
 print("Saved clusters with many haplotypes as a dictionary:")
 print(window_clusters_with_many_haplotypes)
 
-#%% 
+#%% write a function to identify which haplotypes index in the haplotype array are from which mosquito
 
 def hap_to_mosq(hap_idx):
-    '''convert from haplotype index back to mosquitoes to discover which mosquitoes have which haplotypes'''
+    '''convert from haplotype index back to mosquitoes index to discover which mosquitoes have which haplotypes'''
     return int(hap_idx/2)
 
-# %%
+# %% write a function to take the selected haplotypes that we think are important and use the hap_to_mosq function to identify which mosquitoes these relate to
 def selected_hap_array_to_mosq_array(selected_haps):
     mosq_array = [0]*42
     for hap_idx in selected_haps:
         mosq_idx = hap_to_mosq(hap_idx)
         mosq_array[mosq_idx]+=1
     return mosq_array
+    
+# %%  write a function to take the mosquito index and identify which phenotype these mosquitoes have
+def map_mosq_index_to_phenotype(mosq_idx):
+    phenotype = df_samples.iloc[mosq_idx]["phenotype"]
+    return phenotype
 
-
-# %%
+# %% create a dictionary called map_mosquitoes and use the selected_hap_array_to_mosq_array to identify which mosquitoes have the selected haplotypes
 map_mosquitoes = {}
 for window,cluster_dict in window_clusters_with_many_haplotypes.items():
     map_mosquitoes[window]={}
     for cluster,selected_haps in cluster_dict.items():
         map_mosquitoes[window][cluster] = selected_hap_array_to_mosq_array(selected_haps)
 print(map_mosquitoes)
-    
-# %% 
-def map_mosq_index_to_phenotype(mosq_idx):
-    phenotype = df_samples.iloc[mosq_idx]["phenotype"]
-    return phenotype
 
-## make phenotype_scores with window, cluster, phenotype
+## make a dictionary of phenotype_scores with window, cluster, phenotype. Use the map_mosq_index_to_phenotype function to identify the halotypes of the mosquitoes and then give a score
+## mosquitoes score 1 if one of their haplotypes matches one of the 'selected haplotypes' that we care about
+## mosquitoes score 2 if both of their haplotypes match 'selected haplotypes' that we care about
+
 # %% 
 phenotype_scores = {}
 for window,cluster_dict in map_mosquitoes.items():
@@ -379,48 +382,60 @@ for window,cluster_dict in map_mosquitoes.items():
 
 print(phenotype_scores)
 
+# %% Convert the phenotype_scores to a pandas dataframe
 
+phenotype_score_data = phenotype_scores
+rows = []
+for key1, nested_dict in phenotype_score_data.items():
+    for key2, values in nested_dict.items():
+        row = values.copy()
+        row['Significant Window'] = key1
+        row['Haplotype Cluster'] = key2
+        rows.append(row)
 
-# %% Now run a GLM (logistic regression) with logit link function to test whether any of the 
-# haplotype clusters are associated with phenotype 
-import pandas as pd
-import statsmodels.api as sm
+# Convert to DataFrame
+phenotype_scores_dataframe = pd.DataFrame(rows)
 
-# Load the data from the CSV file
-filename = f"haplotype_cluster_scores_{chromosome}.csv"  # Replace with your file path
-df = pd.read_csv(filename)
+# Rearranging the columns order
+phenotype_scores_dataframe = phenotype_scores_dataframe[['Significant Window', 'Haplotype Cluster', 'control', 'resistant', 'susceptible']]
 
-# Filter out control samples and prepare the data for the model
-filtered_df = df[df['phenotype'] != 'control']
-filtered_df['Phenotype'] = filtered_df['phenotype'].map({'resistant': 1, 'susceptible': 0})
+# %% Make separate tables for each haplotype cluster
+df = phenotype_scores_dataframe
 
-# Define the filename for the text file to store model summaries
-summary_filename = f'model_summaries_{chromosome}.txt'
+# Iterate through each unique combination
+for window, cluster in df[['Significant Window', 'Haplotype Cluster']].drop_duplicates().values:
+    # Filter data for the current combination
+    cluster_data = df[(df['Significant Window'] == window) & (df['Haplotype Cluster'] == cluster)]
 
-# Run the model for each window and save summaries
-with open(summary_filename, 'w') as summary_file:
-    for window in filtered_df['Window'].unique():
-        window_data = filtered_df[filtered_df['Window'] == window]
-        
-        # Check if there are enough observations for the model
-        if window_data.shape[0] < 2:
-            summary_file.write(f"Insufficient data for window: {window}\n\n")
-            continue
+    # Create a new DataFrame for the phenotype and score
+    phenotype_data_per_haplotype_cluster = pd.DataFrame({
+        'phenotype': ['resistant', 'susceptible'],
+        'score': [cluster_data['resistant'].iloc[0], cluster_data['susceptible'].iloc[0]]
+    })
+    # File name
+    file_name = f'haplotype_cluster_{chromosome}_{window}_{cluster}_phenotype_table.csv'
+    # Save to CSV
+    phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
 
-        # Define the model
-        model = sm.GLM(window_data['Phenotype'], sm.add_constant(window_data['score']), family=sm.families.Binomial())
+# %% Run a GLM (logistic regression) with logit link function for each haplotype cluster
 
-        # Fit the model
-        result = model.fit()
+# Loop over each file in the directory
+for filename in os.listdir(working_directory):
+    if filename.endswith('_phenotype_table.csv'):
+        # Load the CSV file into a DataFrame
+        filepath = os.path.join(working_directory, filename)
+        df = pd.read_csv(filepath)
+        # Convert phenotype to a binary variable
+        df['response'] = df['phenotype'].map({'resistant': 1, 'susceptible': 0})
+        # Define the model formula
+        formula = 'response ~ score'
+        # Fit the GLM model with a logit link function
+        model = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit()
+        # Prepare the output filename
+        output_filename = f'{filename.replace(".csv", "")}_glm_summary.txt'
+        # Save the model summary to a text file
+        with open(output_filename, 'w') as file:
+            file.write(model.summary().as_text())
+        print(f"GLM summary for {filename} saved to {output_filename}")
 
-        # Print and write the results
-        print(f"Analyzing window: {window}")
-        print(result.summary())
-        summary_file.write(f"Analyzing window: {window}\n")
-        summary_file.write(result.summary().as_text())
-        summary_file.write("\n\n")
-
-print(f"Model summaries saved to '{summary_filename}'")
-
-# Note: A positive coefficient for 'score' indicates a higher likelihood of being "resistant",
-# while a negative coefficient suggests a higher likelihood of being "susceptible".
+# %%

@@ -40,17 +40,19 @@ df_samples=pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','ye
 df_samples.head()
 df_samples.groupby(by=['phenotype']).count
 
-# %% select resistant and susceptible samples from metadata by index value and store as array
+# %% partition samples by phenotype using metadata, split by index value and store as array
 res_samples = df_samples[df_samples['phenotype'] == 'resistant'].index.values
 sus_samples = df_samples[df_samples['phenotype'] == 'susceptible'].index.values
 all_samples = df_samples.index.values
 
 # %% select genotypes for variants and store as a genotype dask array
+# this array contains 23 columns (1 for each mosquito), 16 million rows for each variant, and stores the genotype for each.
 gt_res_samples = gt.take(res_samples, axis=1)
 gt_sus_samples = gt.take(sus_samples, axis=1)
 gt_all_samples = gt.take(all_samples, axis=1)
 
 # %% compute allele counts for samples and create allele counts array
+# this array stores all of the varaints as rows and the count of alleles as columns (0, 1 etc)
 ac_res = gt_res_samples.count_alleles(max_allele=8).compute()
 ac_sus = gt_sus_samples.count_alleles(max_allele=8).compute()
 ac_all = gt_all_samples.count_alleles(max_allele=8).compute()
@@ -80,6 +82,7 @@ gt_sus_seg = gt_sus_samples.compress(sus_seg_variants, axis = 0)
 gt_all_seg = gt_all_samples.compress(all_seg_variants, axis = 0)
 
 # %% convert this genotype array to haplotype array (we can do this because the original data was phased)
+# the haplotype array is similar to the genotype array, but there are two columns per mosquito, one for each haplotype
 h_res_seg = gt_res_seg.to_haplotypes().compute()
 h_sus_seg = gt_sus_seg.to_haplotypes().compute()
 h_all_seg = gt_all_seg.to_haplotypes().compute()
@@ -120,8 +123,7 @@ else:
     sys.exit()  # This will stop the script. If you want the script to continue anyway, # out this line
 
 # %% H12 was calculated using phased biallelic SNPs in 1000 bp windows along the genome
-# SNP windows, using the garuds_h function in scikit-allel. 200 permutations in which penhotype labels randomly permuted and value recalculated?
-# Calculate in 1000bp windows, look at the difference in H12
+# SNP windows, using the garuds_h function in scikit-allel.
 # A.miles:
 # To calibrate the window sizes I ran the H12 scans with a range of different window sizes, and chose
 # the smallest window size for which the mean value of H1 over all windows was below 0.01.
@@ -151,17 +153,18 @@ num_windows_sus = real_sus_h12.shape[0]
 print("Number of windows for resistant samples:", num_windows_res)
 print("Number of windows for susceptible samples:", num_windows_sus)
 
-# %%
+# %% The h12 values are calculated in windows of 1000 SNPs. Each SNP has a POS value which is in the POS array.
 window_size = 1000  # Define the window size as 1000 SNPs
-num_windows = len(pos_res_seg) // window_size  # Calculate the number of windows
+num_windows = len(pos_res_seg) // window_size  # Calculate the number of windows in total
 
 # %% Calculate the median genomic position for each window
-median_positions = [np.median(pos_res_seg[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
+# for each iteration (i) a segment of pos_res_seg is processed
+median_positions_res = [np.median(pos_res_seg[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
 
 # Plotting
-if len(median_positions) == len(real_res_h12):
+if len(median_positions_res) == len(real_res_h12):
     plt.figure(figsize=(10, 6))
-    plt.scatter(median_positions, real_res_h12, alpha=0.6)
+    plt.scatter(median_positions_res, real_res_h12, alpha=0.6)
     plt.xlabel('Median Genomic Position of 1000 SNP Windows')
     plt.ylabel('H12 Value in Resistant Samples')
     plt.title('H12 Values Against Median Genomic Position of SNP Windows')
@@ -171,23 +174,23 @@ else:
 
 # %% 
 # Identify windows with H12 values over 0.3
-h12_threshold_mask = np.array(real_res_h12) > 0.3
+h12_threshold_mask = np.array(real_res_h12) > 0.2
 # Extract median genomic positions of these windows
-high_h12_positions = np.array(median_positions)[h12_threshold_mask]
+high_res_h12_positions = np.array(median_positions_res)[h12_threshold_mask]
 # Print or use these positions as needed
-print("Median genomic positions of windows with H12 > 0.3:", high_h12_positions)
+print("Median genomic positions of windows with H12 > 0.2:", high_res_h12_positions)
 
 # %%
 window_size = 1000  # Define the window size as 1000 SNPs
 num_windows = len(pos_sus_seg) // window_size  # Calculate the number of windows
 
 # Calculate the median genomic position for each window
-median_positions = [np.median(pos_sus_seg[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
+median_positions_sus = [np.median(pos_sus_seg[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
 
 # Plotting
-if len(median_positions) == len(real_sus_h12):
+if len(median_positions_sus) == len(real_sus_h12):
     plt.figure(figsize=(10, 6))
-    plt.scatter(median_positions, real_sus_h12, alpha=0.6)
+    plt.scatter(median_positions_sus, real_sus_h12, alpha=0.6)
     plt.xlabel('Median Genomic Position of 1000 SNP Windows')
     plt.ylabel('H12 Value in Susceptible Samples')
     plt.title('H12 Values Against Median Genomic Position of SNP Windows')
@@ -198,9 +201,9 @@ else:
 # %% Identify windows with H12 values over 0.3
 h12_threshold_mask = np.array(real_sus_h12) > 0.3
 # Extract median genomic positions of these windows
-high_h12_positions = np.array(median_positions)[h12_threshold_mask]
+high_sus_h12_positions = np.array(median_positions_sus)[h12_threshold_mask]
 # Print or use these positions as needed
-print("Median genomic positions of windows with H12 > 0.3:", high_h12_positions)
+print("Median genomic positions of windows with H12 > 0.3:", high_sus_h12_positions)
 
 ###### Done! Amazing! Now do permutations of H12 with any random samples from the population ######
 
@@ -209,38 +212,23 @@ print("Median genomic positions of windows with H12 > 0.3:", high_h12_positions)
 
 # to calculate for all samples it would be:
 # h1, h12, h123, h2_h1 = allel.moving_garud_h(h_all_seg, 1000)
-# i just want to use a random 23 samples from the sample set so that the sample size is the same as the resistant sample population
+# Use all samples to get an idea of what selective sweeps there are in the whole population
 
 # Number of permutations
-num_permutations = 30
-# Number of samples to select in each permutation
-num_samples_per_permutation = 23
+num_permutations = 5
 # Initialize a list to store the H12 values for each permutation
-permuted_h12_values_23_samples = []
+permuted_h12_values = []
 
 for i in range(num_permutations):
-    # Randomly select samples
-    selected_samples_indices = random.sample(range(len(all_samples)), num_samples_per_permutation)
-    #print(f"Permutation {i}, selected indices: {selected_samples_indices}")
-    # Select genotypes for these samples
-    gt_selected_samples = gt.take(selected_samples_indices, axis=1)
-    # Compute allele counts
-    ac_selected = gt_selected_samples.count_alleles(max_allele=8).compute()
-    #print(f"Permutation {i}, allele counts: {ac_selected}")
-    # Filter for biallelic variants
-    seg_variants_selected = ac_selected.is_biallelic_01()
-    # Create a genotype array for the segregating variants
-    gt_selected_seg = gt_selected_samples.compress(seg_variants_selected, axis=0)
-    # Convert to haplotype array
-    h_selected_seg = gt_selected_seg.to_haplotypes().compute()
+    # Use previously made haplotype array for all samples 
     # Calculate h12 values for the selected samples
-    _, h12_score_selected, _, _ = allel.moving_garud_h(h_selected_seg, size=1000)
+    _, h12_score_selected, _, _ = allel.moving_garud_h(h_all_seg, size=1000)
     #print(f"Permutation {i}, H12 values: {h12_score_selected}")
     # Pairing H12 values with their corresponding SNP window indices
     snp_windows = np.arange(len(h12_score_selected))  # Generating SNP window indices
     permuted_h12_pairs = list(zip(snp_windows, h12_score_selected))  # Pairing indices with H12 values
     # Append the pairs to the list
-    permuted_h12_values_23_samples.append(permuted_h12_pairs)
+    permuted_h12_values.append(permuted_h12_pairs)
     # Notify
     print(f"Calculated H12 values for permutation {i}")
 
@@ -250,7 +238,7 @@ print("Permutations all calculated")
 window_size = 1000
 plt.figure(figsize=(12, 6))
 
-for i, permuted_pairs in enumerate(permuted_h12_values_23_samples):
+for i, permuted_pairs in enumerate(permuted_h12_values):
     # Extracting SNP window indices and H12 values
     snp_windows, h12_values = zip(*permuted_pairs)
     # Calculating the median genomic position for each window
@@ -265,11 +253,10 @@ plt.show()
 
 # %% Plot the permuted windows and real_h12 on the same graph with the same x axis
 
-# Plotting both permuted values and real_res_h12 on the same graph
 plt.figure(figsize=(12, 6))
 
 # Plot permuted values
-for i, permuted_pairs in enumerate(permuted_h12_values_23_samples):
+for i, permuted_pairs in enumerate(permuted_h12_values):
     # Extracting SNP window indices and H12 values
     snp_windows, h12_values = zip(*permuted_pairs)
     # Calculating the median genomic position for each window
@@ -288,39 +275,48 @@ plt.title('Comparison of Permuted H12 Values and Real Resistant Sample H12 Value
 plt.legend()
 plt.show()
 
-
-# %% Calculate the 99th percentile value for each of the permuted h12 windows
+# %% Calculate the 99th percentile value for each of the median_positions_permuted
 # Number of SNP windows is the same as the length of the first permutation's data
-num_windows = len(permuted_h12_values_23_samples[0])
+#num_windows = len(permuted_h12_values[0])
 # Initialize a list to collect H12 values for each window
-h12_values_per_window = [[] for _ in range(num_windows)]
+#h12_values_per_window = [[] for i in range(num_windows)]
 # Collecting H12 values for each window from each permutation
-for permuted_pairs in permuted_h12_values_23_samples:
-    for snp_window, h12_value in permuted_pairs:
-        h12_values_per_window[snp_window].append(h12_value)# Now calculate the 99th percentile for each window
-h12_99th_percentiles = [np.percentile(h12_values, 99) for h12_values in h12_values_per_window]
+#for permuted_h12 in permuted_h12_values:
+#    for snp_window_number, h12_value in permuted_h12:
+#        h12_values_per_window[snp_window_number].append(h12_value)
+# Now calculate the 99th percentile for each window
+#h12_99th_percentiles = [np.percentile(h12_values, 99) for h12_values in h12_values_per_window]
 
-# h12_99th_percentiles now contains the 99th percentile H12 value for each SNP window
+# %% Identify the genomic positions of the peaks
 
-# %% Are any of the resistant H12 values greater than the 99th percentile of the permutations for that window
-# Loop through each window
-for i in range(len(real_res_h12)):
-    # Compare the real H12 value with the 99th percentile value
-    if real_res_h12[i] > h12_99th_percentiles[i]:
-        # Calculate median genomic position for the SNP window
-        median_position = np.median(pos_res_seg[i * window_size: (i + 1) * window_size])
-        # Print the real H12 value and its median position
-        print(f"Window {i}: H12 value {real_res_h12[i]}, Median position {median_position}")
+# %% Identify genomic position of H12 values over 0.3 for the resistant samples
+h12_threshold_mask = np.array(real_res_h12) > 0.3
+# Extract median genomic positions of these windows
+high_res_h12_positions = np.array(median_positions_res)[h12_threshold_mask]
+# Print or use these positions as needed
+print("Median genomic positions of windows with H12 > 0.3:", high_res_h12_positions)
 
+# %% Identify genomic position of H12 values over 0.3 for the permuted values (all samples)
 
-## Check that the plots are definitely aligning properly on the x axis.
+# take average of permuted values for each window
+# Number of SNP windows is the same as the length of the first permutation's data
+num_windows = len(permuted_h12_values[0])
+# Initialize a list to collect H12 values for each window
+h12_values_per_window = [[] for i in range(num_windows)]
+# Collecting H12 values for each window from each permutation
+for permuted_h12 in permuted_h12_values:
+    for snp_window_number, h12_value in permuted_h12:
+        h12_values_per_window[snp_window_number].append(h12_value)
+# Now calculate the average for each window
+h12_permuted_averages = [np.average(permuted_h12_values) for permuted_h12_values in h12_values_per_window]
+# Identify genomic positions for values above threshold
+h12_permuted_threshold_mask = np.array(h12_permuted_averages) > 0.3
+# Extract median genomic positions of these windows
+high_permuted_h12_positions = np.array(median_positions_permuted)[h12_permuted_threshold_mask]
+# Print or use these positions as needed
+print("Median genomic positions of windows with permuted H12 > 0.3:", high_permuted_h12_positions)
 
-
-
-
-
-
-
+# identify which 
 
 # %% PBS
 # PBS uses FST to identify genomic regions showing greater evolutionary change in one group 
