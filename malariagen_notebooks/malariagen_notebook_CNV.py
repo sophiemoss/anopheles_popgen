@@ -34,58 +34,148 @@ df_sample_sets
 # Copy number calls, which is the output of the HMM (“call_CN” - the estimated copy number in each 300 bp window).
 # Each variant is a 300bp window
 
-hmm = ag3.cnv_hmm(region="2R", sample_sets="AG1000G-GM-C").set_index(samples="sample_id")
+hmm = ag3.cnv_hmm(region="2R", sample_sets="AG1000G-GM-A").set_index(samples="sample_id")
 hmm
 
 # %% Example  - look at coverage data in these selected samples
-sample_names = ['AG0004-C','AG0019-C','AG0318-C','AG0284-C','AG0354-C','AG0291-C',
-                'AG0049-C','AG0064-C','AG0043-C','AG0060-C','AG0340-C']
+# AG1000G-GM-C
+sample_names = ['AG0004-C','AG0018-C','AG0019-C','AG0043-C','AG0049-C',
+                'AG0058-C','AG0060-C','AG0064-C','AG0074-C','AG0284-C',
+                'AG0291-C','AG0303-C','AG0318-C','AG0328-C','AG0340-C',
+                'AG0354-C']
+
+# %% AG1000G-GM-A
+sample_names = ['AG0135-C','AG0225-C','AG0226-C','AG0234-C']
+
+# %% AG1000G-GM-B
+sample_names = ['AG0442-CW']
+
+# %% AG1000G-GW
+sample_names = ['AJ0023-C', 'AJ0037-C', 'AJ0038-C', 'AJ0039-C', 'AJ0049-C',
+                'AJ0056-C','AJ0059-C','AJ0061-C','AJ0071-C','AJ0072-C','AJ0085-C',
+                'AJ0097-C','AJ0107-C','AJ0113-C','AJ0117-C','AJ0120-C','AJ0121-C',
+                'AJ0122-C','AJ0123-C','AJ0124-C','AJ0125-C','AJ0126-C','AJ0127-C',
+                'AJ0131-C','AJ0133-C','AJ0138-C','AJ0140-C','AJ0145-C','AJ0155-C']
 
 # %% We can plot coverage in the Cyp6aa / Cyp6p cluster of genes, which have been shown to be involved in 
 # insecticide resistance. The plots below show this region of the genome, which is on chromosome 2R between
 #  positions 28,460,000–28,580,000, with genomic position on the X axis. The black markers show normalised coverage,
 #  while the blue line shows the estimated copy number (i.e., the output of the HMM) at each 300 bp window
 
+# %% for Cyp6aa - Cyp6p region
+
 for s in sample_names:
-    ag3.plot_cnv_hmm_coverage(s, sample_set='AG1000G-GM-C', region='2R:28,460,000-28,580,000')
+    ag3.plot_cnv_hmm_coverage(s, sample_set='AG1000G-GW', region='2R:28,460,000-28,580,000')
+
+# %% for Cyp6m - Cyp6z region
+
+for s in sample_names:
+    ag3.plot_cnv_hmm_coverage(s, sample_set='AG1000G-GW', region='3R:6,900,000-7,000,000')
 
 # %% there is a function in the malariagen package to visualise th HMM output for many samples at once as a heatmap
 
 ag3.plot_cnv_hmm_heatmap(
-    region='2R:28,460,000-28,580,000',
+    region='3R:6,900,000-7,000,000',
     sample_sets='AG1000G-GM-C', 
     row_height=5
 );
 
 # %% Load the CNV discordant read calls. These provide allel-specific CNV genotypes at a selection of genomic loci
 # known to be involved in insecticide resistance
-
 discordant_read_calls = (
     ag3
-    .cnv_discordant_read_calls(contig="2R", sample_sets="AG1000G-GM-C")
+    .cnv_discordant_read_calls(contig="2R", sample_sets="AG1000G-GW")
     .set_index(samples="sample_id", variants="variant_id")
 )
 discordant_read_calls
-
-
 # %% Pull out discordant read calls in the Cyp6aa/Cyp6p region 
-
 # Locate the CNV alleles from the Cyp6aa / Cyp6p region
 loc_cyp6aap = discordant_read_calls["variant_Region"].values == 'Cyp6aa/Cyp6p'
-
 # Select data for our genes and samples of interest
 discordant_read_calls_cyp6aap = (
     discordant_read_calls
     .isel(variants=loc_cyp6aap)
     .sel(samples=sample_names)
 )
-
 # Convert genotypes to a pandas DataFrame
 df_cyp6aap = discordant_read_calls_cyp6aap["call_genotype"].to_pandas()
-
 # Remove CNVs that are absent in all samples
 df_cyp6aap = df_cyp6aap.loc[(df_cyp6aap != 0).any(axis=1)]
 df_cyp6aap
+df_cyp6aap.to_csv('AG1000G-GW_cyp6aap_discordant_reads.csv')
+
+########################################################################
+# %% Load the CNV discordant read calls for Cyp6m/Cyp6z region
+discordant_read_calls = (
+    ag3
+    .cnv_discordant_read_calls(contig="3R", sample_sets="AG1000G-GW")
+    .set_index(samples="sample_id", variants="variant_id")
+)
+discordant_read_calls
+# %% Pull out discordant read calls in the Cyp6aa/Cyp6p region 
+# Locate the CNV alleles
+loc_cyp6mz = discordant_read_calls["variant_Region"].values == 'Cyp6m/Cyp6z'
+# Select data for our genes and samples of interest
+discordant_read_calls_cyp6mz = (
+    discordant_read_calls
+    .isel(variants=loc_cyp6mz)
+    .sel(samples=sample_names)
+)
+# Convert genotypes to a pandas DataFrame
+df_cyp6mz = discordant_read_calls_cyp6mz["call_genotype"].to_pandas()
+# Remove CNVs that are absent in all samples
+df_cyp6mz = df_cyp6mz.loc[(df_cyp6mz != 0).any(axis=1)]
+df_cyp6mz
+df_cyp6mz.to_csv('AG1000G-GW_cyp6mz_discordant_reads.csv')
+
+########################################################################
+# %% Load the CNV discordant read calls for Gstue region
+discordant_read_calls = (
+    ag3
+    .cnv_discordant_read_calls(contig="3R", sample_sets="AG1000G-GW")
+    .set_index(samples="sample_id", variants="variant_id")
+)
+discordant_read_calls
+# %% Pull out discordant read calls in the Cyp6aa/Cyp6p region 
+# Locate the CNV alleles
+loc_gstue = discordant_read_calls["variant_Region"].values == 'Gstu/Gste'
+# Select data for our genes and samples of interest
+discordant_read_calls_gstue = (
+    discordant_read_calls
+    .isel(variants=loc_gstue)
+    .sel(samples=sample_names)
+)
+# Convert genotypes to a pandas DataFrame
+df_gstue = discordant_read_calls_gstue["call_genotype"].to_pandas()
+# Remove CNVs that are absent in all samples
+df_gstue = df_gstue.loc[(df_gstue != 0).any(axis=1)]
+df_gstue
+
+df_gstue.to_csv('AG1000G-GW_gstue_discordant_reads.csv')
+
+########################################################################
+# %% Load the CNV discordant read calls for Cyp9k1 region
+discordant_read_calls = (
+    ag3
+    .cnv_discordant_read_calls(contig="X", sample_sets="AG1000G-GW")
+    .set_index(samples="sample_id", variants="variant_id")
+)
+discordant_read_calls
+# %% Pull out discordant read calls in the Cyp6aa/Cyp6p region 
+# Locate the CNV alleles
+loc_cyp9k1 = discordant_read_calls["variant_Region"].values == 'Cyp9k1'
+# Select data for our genes and samples of interest
+discordant_read_calls_cyp9k1 = (
+    discordant_read_calls
+    .isel(variants=loc_cyp9k1)
+    .sel(samples=sample_names)
+)
+# Convert genotypes to a pandas DataFrame
+df_cyp9k1 = discordant_read_calls_cyp9k1["call_genotype"].to_pandas()
+# Remove CNVs that are absent in all samples
+df_cyp9k1 = df_cyp9k1.loc[(df_cyp9k1 != 0).any(axis=1)]
+df_cyp9k1
+df_cyp9k1.to_csv('AG1000G-GW_cyp9k1_discordant_reads.csv')
 
 # %% Check where each of these CNVs start and end, and see if this corresponds to the coverage increases 
 # that we saw in the HMM data
@@ -94,7 +184,7 @@ dup_positions = (
     discordant_read_calls
     .reset_coords()
     [["variant_position", "variant_end"]]
-    .sel(variants=["Cyp6aap_Dup8"])
+    .sel(variants=["Cyp6aap_Dup16"])
     .to_dataframe()
 )
 dup_positions
@@ -104,7 +194,7 @@ dup_positions
 
 # %% Access per-gene modal copy number data for all genes in chromosome arm 2R 
 gene_copy_number = (
-    ag3.gene_cnv(region="3R", sample_sets="AG1000G-BF-A")
+    ag3.gene_cnv(region="2R", sample_sets="AG1000G-GM-C")
     .set_index(genes="gene_id", samples="sample_id")
 )
 
@@ -149,7 +239,7 @@ gste_gene_copy_number = (
 
 gste_gene_copy_number
 
-# %% Plor this as a heatmap for easier viewing
+# %% Plot this as a heatmap for easier viewing
 def plot_gene_cnv_heatmap(data):
 
     # create a figure

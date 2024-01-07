@@ -8,7 +8,7 @@
 import pandas as pd
 
 # %% Load the discordant read guide
-discordant_df = pd.read_csv('discordant_read_guide.csv')
+discordant_df = pd.read_csv('discordant_read_guide_v2.csv')
 
 # %% Group the guide by Duplication_ID
 grouped_discordant_df = discordant_df.groupby('Duplication_ID')
@@ -59,4 +59,4 @@ results_df = pd.DataFrame.from_dict(results_dict, orient='index')
 results_df = results_df.transpose()
 
 # %%  Save the results to a CSV file
-results_df.to_csv('clipping_summary_C.csv', index_label='Sample')
+results_df.to_csv('all_genes_clipping_summary.csv', index_label='Sample')

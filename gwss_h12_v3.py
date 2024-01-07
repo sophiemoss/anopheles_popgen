@@ -132,6 +132,7 @@ num_windows_notres = real_notres_h12.shape[0]
 
 print("Number of windows for resistant samples:", num_windows_res)
 print("Number of windows for not resistant:", num_windows_notres)
+print("Number of windows for susceptible:", num_windows_sus)
 
 # %% The h12 values are calculated in windows of 1000 SNPs. Each SNP has a POS value which is in the POS array.
 window_size = 1000  # Define the window size as 1000 SNPs
@@ -154,7 +155,7 @@ else:
 
 # %% 
 # Identify windows with H12 values over 0.3
-h12_threshold_mask = np.array(real_res_h12) > 0.2
+h12_threshold_mask = np.array(real_res_h12) > 0.3
 # Extract median genomic positions of these windows
 high_res_h12_positions = np.array(median_positions)[h12_threshold_mask]
 # Print or use these positions as needed
@@ -185,10 +186,10 @@ if len(median_positions) == len(real_res_h12) == len(real_sus_h12):
     plt.title('H12 Values Against Median Genomic Position of SNP Windows')
 
     # Plotting resistant samples
-    plt.scatter(median_positions, real_res_h12, alpha=0.6, color='orange', label='Resistant')
+    plt.scatter(median_positions, real_res_h12, alpha=0.6, color='blue', label='Resistant')
 
     # Plotting susceptible samples
-    plt.scatter(median_positions, real_sus_h12, alpha=0.6, color='blue', label='Susceptible')
+    plt.scatter(median_positions, real_sus_h12, alpha=0.6, color='plum', label='Susceptible')
 
     plt.xlabel('Median Genomic Position of 1000 SNP Windows')
     plt.ylabel('H12 Value')
@@ -201,7 +202,7 @@ else:
 
 if len(median_positions) == len(real_notres_h12):
     plt.figure(figsize=(10, 6))
-    plt.title('Genome Wide Selective Sweep: H12 values across the genome')
+    plt.title('Genome Wide Selection Scan: H12 values across the genome')
 
     # Plotting resistant samples
     plt.scatter(median_positions, real_res_h12, alpha=0.6, color='blue', label='Resistant mosquitoes')
@@ -223,6 +224,27 @@ h12_peaks = np.array(median_positions)[h12_threshold_mask]
 # Print or use these positions as needed
 print("Median genomic positions of windows with H12 > 0.2:", h12_peaks)
 
+# %% What is heighest H12 value genomic position for each peak?
+# peak b is the heighest value of all so can just find the highest value of notres and look for genomic position
+max_real_notres_h12 = np.max(real_notres_h12)
+max_value_peak_b = np.array(real_notres_h12) == max_real_notres_h12
+peak_b_genomic_position = np.array(median_positions)[max_value_peak_b]
+
+# peak a is more complicated
+# need to find the highest res mosquito window position but only for windows lower than 2*1e7
+# It will be one of these: 15130159.  15160300.  15200374. 15291513.5 15483510.5 15521589.5
+# Iterate through the high H12 positions and print both the H12 value and the median genomic position of the SNP window
+
+h12_threshold_mask = np.array(real_notres_h12) > 0.2
+
+print("Median genomic positions and corresponding H12 values for windows with H12 > 0.2:")
+for i in range(len(h12_threshold_mask)):
+    if h12_threshold_mask[i]:
+        print(f"Position: {median_positions[i]}, H12 Value: {real_notres_h12[i]}")
+
+# so peak a is at the highest H12 value out of those positions, 15291513.5
+
+
 # %%
 while IFS=',' read -r chr start end; do
     echo "Processing: $chr from $start to $end" # Debugging line
@@ -234,5 +256,5 @@ done < h12_peaks_locations.txt
 # %% Find the genomic position of the actual peak and then look at x distance around the peak for genes within the sweep.
 # Or do what i've done and look at genes within the region of the peak (think this is fine)
 
-AGAP000818 = cytochrome P450, cyp9k1
+# AGAP000818 = cytochrome P450, cyp9k1
 

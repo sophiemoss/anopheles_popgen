@@ -30,7 +30,7 @@ print('scikit-allel', allel.__version__)
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "3R"
+chromosome = "3L"
 os.chdir(working_directory)
 
 # %% open callset file
@@ -220,29 +220,11 @@ for window, genotype_array in subsetted_genotype_arrays_by_window.items():
 
 print("Converted all of the individual subsetted genotype arrays to haplotype arrays")
 
-# %% Check how many unique haplotypes there are in each haplotype array
-# This should be fewer than double your sample number (for diploid organisms, because each sample has two haplotypes at each window)
-unique_haplotype_counts = {}
-
-for window, hap_array in window_haplotype_arrays.items():
-    # Convert the array to a NumPy array and then transpose it
-    numpy_hap_array = np.array(hap_array)
-    transposed_haplotypes = numpy_hap_array.T
-    # Convert each haplotype to a tuple to make them hashable
-    tuple_haplotypes = [tuple(haplotype) for haplotype in transposed_haplotypes]
-    # Use a set to find unique haplotypes
-    unique_haplotypes = set(tuple_haplotypes)
-    # Store the count of unique haplotypes for this window
-    unique_haplotype_counts[window] = len(unique_haplotypes)
-    print(f"Window {window} has {unique_haplotype_counts[window]} unique haplotypes.")
-
-###  Make a dendrogram for each haplotype array and save the linkage matrix to use later
-
 # %% First, define the dendrogram function:
 # Global dictionary to store linkage matrices
 window_linkage_matrices = {}
 
-def dendrogram(haplotypes, window_range, linkage_method='single', metric='hamming', orient='right', size=(7,5)):
+def dendrogram(haplotypes, window_range, linkage_method='single', metric='hamming', orient='right', size=(7,5), title_font_size=10):
     """Takes a 2D numpy array of values, performs hierarchical clustering, 
     and plots dendrogram, storing the linkage matrix in a global dictionary."""
     
@@ -279,12 +261,17 @@ def dendrogram(haplotypes, window_range, linkage_method='single', metric='hammin
         ax.set_ylim(-0.05, np.max(linkage_matrix[:, 2]) + 0.2)
 
     # Remove x-axis labels if orientation is 'top'
-    if orient == 'top':
-        ax.set_xticklabels([])
+    #if orient == 'top':
+     #   ax.set_xticklabels([])
 
+     # Add title to the plot
+    plt.title(f"Dendrogram for Chromosome: {chromosome} Window: {window}", fontsize = title_font_size)
+
+    # Save the plot as PNG file
+    filename = f"dendrogram_{chromosome}_{window}.png"
+    plt.savefig(filename, bbox_inches='tight')
     plt.show()
     return linkage_matrix  # Optionally, return the linkage matrix if needed
-
 
 # %% Plot the dendrograms. Loop over each haplotype array, which are stored in the window_haplotype_arrays dictionary, and plot the dendrogram.
 for window, hap_array in window_haplotype_arrays.items():
@@ -321,7 +308,7 @@ for window, linkage_matrix in window_linkage_matrices.items():
             clustered_haplotypes[cluster_label] = []
         clustered_haplotypes[cluster_label].append(i)
 
-    # Print out the clusters with more than 10 haplotypes or a message if no such clusters are found
+    # Print out the clusters with more than 20 haplotypes or a message if no such clusters are found
     clusters_with_more_than_five = {k: v for k, v in clustered_haplotypes.items() if len(v) >= 20}
 
     # Only add to the dictionary if there are clusters with more than five haplotypes
@@ -415,27 +402,27 @@ for window, cluster in df[['Significant Window', 'Haplotype Cluster']].drop_dupl
     # File name
     file_name = f'haplotype_cluster_{chromosome}_{window}_{cluster}_phenotype_table.csv'
     # Save to CSV
-    phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
+    #phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
 
 # %% Run a GLM (logistic regression) with logit link function for each haplotype cluster
 
 # Loop over each file in the directory
-for filename in os.listdir(working_directory):
-    if filename.endswith('_phenotype_table.csv'):
-        # Load the CSV file into a DataFrame
-        filepath = os.path.join(working_directory, filename)
-        df = pd.read_csv(filepath)
-        # Convert phenotype to a binary variable
-        df['response'] = df['phenotype'].map({'resistant': 1, 'susceptible': 0})
-        # Define the model formula
-        formula = 'response ~ score'
-        # Fit the GLM model with a logit link function
-        model = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit()
-        # Prepare the output filename
-        output_filename = f'{filename.replace(".csv", "")}_glm_summary.txt'
-        # Save the model summary to a text file
-        with open(output_filename, 'w') as file:
-            file.write(model.summary().as_text())
-        print(f"GLM summary for {filename} saved to {output_filename}")
-
+#for filename in os.listdir(working_directory):
+#    if filename.endswith('_phenotype_table.csv'):
+#        # Load the CSV file into a DataFrame
+#        filepath = os.path.join(working_directory, filename)
+#        df = pd.read_csv(filepath)
+#        # Convert phenotype to a binary variable
+#        df['response'] = df['phenotype'].map({'resistant': 1, 'susceptible': 0})
+#        # Define the model formula
+#        formula = 'response ~ score'
+#        # Fit the GLM model with a logit link function
+#        model = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit()
+#        # Prepare the output filename
+#        output_filename = f'{filename.replace(".csv", "")}_glm_summary.txt'
+#        # Save the model summary to a text file
+#        with open(output_filename, 'w') as file:
+#            file.write(model.summary().as_text())
+#        print(f"GLM summary for {filename} saved to {output_filename}")
+#
 # %%
