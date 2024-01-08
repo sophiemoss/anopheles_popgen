@@ -30,7 +30,7 @@ print('scikit-allel', allel.__version__)
 # %%
 working_directory = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering'
 callset_file = '/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_filtering/2022_gambiae.zarr'
-chromosome = "3R"
+chromosome = "X"
 os.chdir(working_directory)
 
 # %% open callset file
@@ -280,7 +280,7 @@ for window, hap_array in window_haplotype_arrays.items():
     # Transpose the haplotype array to get haplotypes as rows
     transposed_hap_array = np.transpose(hap_array)
     # Call the dendrogram function and pass the window range
-    dendrogram(transposed_hap_array, orient='top', label=f"Dendrogram for genomic bps {window}")
+    dendrogram(transposed_hap_array, orient='top', label=f"Dendrogram for Chromosome: {chromosome} Window: {window}")
 
 print("Finished making dendrograms")
 
@@ -405,7 +405,7 @@ for window, cluster in df[['Significant Window', 'Haplotype Cluster']].drop_dupl
     # File name
     file_name = f'haplotype_cluster_{chromosome}_{window}_{cluster}_phenotype_table.csv'
     # Save to CSV
-    #phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
+    phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
 
 # %% Run a GLM (logistic regression) with logit link function for each haplotype cluster
 

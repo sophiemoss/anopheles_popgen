@@ -1,0 +1,19 @@
+## head Anopheles_gambiae.AgamP4.56.chr.gff3
+
+##gff-version 3
+##sequence-region   2L 1 49364325
+##sequence-region   2R 1 61545105
+##sequence-region   3L 1 41963435
+##sequence-region   3R 1 53200684
+##sequence-region   Mt 1 15363
+##sequence-region   X 1 24393108
+#!genome-build VectorBase AgamP4
+#!genome-version AgamP4
+#!genome-date 2006-02
+
+2L: 1   -   49,364,325
+2R: 49,364,326  -   110,909,430
+3L: 110,909,430 -   152,872,865
+3R: 152,872,865 -   206,073,549
+Mt: 206,073,549 -   206,088,912
+X:  206,088,912 -   230,482,020

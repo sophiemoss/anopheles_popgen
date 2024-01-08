@@ -112,6 +112,8 @@ real_sus_h1, real_sus_h12, real_sus_h123, real_sus_h2_h1 = allel.moving_garud_h(
 
 real_notres_h1, real_notres_h12, real_notres_123, real_notres_h2_h1 = allel.moving_garud_h(h_notres_seg, 1000)
 
+real_all_h1, real_all_h12, real_all_123, real_all_h2_h1 = allel.moving_garud_h(h_all_seg, 1000)
+                                                                                           
 # %% The above variables are stored as numpy.nd arrays
 
 max_real_res_h12 = np.max(real_res_h12)
@@ -142,119 +144,155 @@ num_windows = len(pos_filtered) // window_size  # Calculate the number of window
 # for each iteration (i) a segment of pos_res_seg is processed
 median_positions = [np.median(pos_filtered[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
 
-# %% Plotting
-if len(median_positions) == len(real_res_h12):
+# %% Plot h12 values for each chromosome
+# Create a dictionary to hold H12 values and positions for each chromosome
+# Resistant samples
+res_h12_chrom = {}
+# Loop through each window
+for i in range(num_windows):
+    chrom = chrom_filtered[i * window_size]  # Assumes the chromosome for all SNPs in a single window is consistent 
+    pos = median_positions[i]
+    h12 = real_res_h12[i]
+    # Add this data to the corresponding chromosome in the dictionary
+    if chrom not in res_h12_chrom:
+        res_h12_chrom[chrom] = {'positions': [], 'h12': []}
+    res_h12_chrom[chrom]['positions'].append(pos)
+    res_h12_chrom[chrom]['h12'].append(h12)
+# Now plot for each chromosome
+for chrom in res_h12_chrom:
     plt.figure(figsize=(10, 6))
-    plt.scatter(median_positions, real_res_h12, alpha=0.6)
-    plt.xlabel('Median Genomic Position of 1000 SNP Windows')
+    plt.scatter(res_h12_chrom[chrom]['positions'], res_h12_chrom[chrom]['h12'], alpha=0.6)
+    plt.xlabel('Median position of SNP windows across the chromosome')
     plt.ylabel('H12 Value in Resistant Samples')
-    plt.title('H12 Values Against Median Genomic Position of SNP Windows')
+    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.show()
-else:
-    print("Mismatch in the lengths of position and H12 arrays. Further debugging needed.")
+# Save the resistant samples dictionary which contains chromsome, positions and h12 value.
+import csv
+with open('res_h12_chrom.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Chromosome', 'Position', 'H12'])
+    # Iterate through the dictionary and write data
+    for chrom, data in res_h12_chrom.items():
+        for position, h12 in zip(data['positions'], data['h12']):
+            writer.writerow([chrom, position, h12])
 
-# %% 
-# Identify windows with H12 values over 0.3
-h12_threshold_mask = np.array(real_res_h12) > 0.3
-# Extract median genomic positions of these windows
-high_res_h12_positions = np.array(median_positions)[h12_threshold_mask]
-# Print or use these positions as needed
-print("Resistant samples: Median genomic positions of windows with H12 > 0.2:", high_res_h12_positions)
-
-# %% Plot susceptible samples 
-
-if len(median_positions) == len(real_sus_h12):
+# %% Not-resistant plots per chromosome
+notres_chrom_h12_data = {}
+# Loop through each window
+for i in range(num_windows):
+    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
+    pos = median_positions[i]
+    h12 = real_notres_h12[i]  
+    # Add this data to the corresponding chromosome in the dictionary
+    if chrom not in notres_chrom_h12_data:
+        notres_chrom_h12_data[chrom] = {'positions': [], 'h12': []}
+    notres_chrom_h12_data[chrom]['positions'].append(pos)
+    notres_chrom_h12_data[chrom]['h12'].append(h12)
+# Now plot for each chromosome
+for chrom in notres_chrom_h12_data:
     plt.figure(figsize=(10, 6))
-    plt.scatter(median_positions, real_sus_h12, alpha=0.6)
-    plt.xlabel('Median Genomic Position of 1000 SNP Windows')
+    plt.scatter(notres_chrom_h12_data[chrom]['positions'], notres_chrom_h12_data[chrom]['h12'], alpha=0.6)
+    plt.xlabel('Median position of SNP windows across the Chromosome')
+    plt.ylabel('H12 Value in Not-Resistant Samples')
+    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
+    plt.show()
+# Save the not-resistant samples dictionary which contains chromsome, positions and h12 value.
+import csv
+with open('notres_h12_chrom.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Chromosome', 'Position', 'H12'])
+    # Iterate through the dictionary and write data
+    for chrom, data in notres_chrom_h12_data.items():
+        for position, h12 in zip(data['positions'], data['h12']):
+            writer.writerow([chrom, position, h12])
+
+# %% Susceptible only per chromosome
+sus_chrom_h12_data = {}
+# Loop through each window
+for i in range(num_windows):
+    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
+    pos = median_positions[i]
+    h12 = real_sus_h12[i]  
+    # Add this data to the corresponding chromosome in the dictionary
+    if chrom not in sus_chrom_h12_data:
+        sus_chrom_h12_data[chrom] = {'positions': [], 'h12': []}
+    sus_chrom_h12_data[chrom]['positions'].append(pos)
+    sus_chrom_h12_data[chrom]['h12'].append(h12)
+# Now plot for each chromosome
+for chrom in sus_chrom_h12_data:
+    plt.figure(figsize=(10, 6))
+    plt.scatter(sus_chrom_h12_data[chrom]['positions'], sus_chrom_h12_data[chrom]['h12'], alpha=0.6)
+    plt.xlabel('Median position of SNP windows across the Chromosome')
     plt.ylabel('H12 Value in Susceptible Samples')
-    plt.title('H12 Values Against Median Genomic Position of SNP Windows')
+    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.show()
-else:
-    print("Mismatch in the lengths of position and H12 arrays. Further debugging needed.")
+# Save the not-resistant samples dictionary which contains chromsome, positions and h12 value.
+import csv
+with open('sus_h12_chrom.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Chromosome', 'Position', 'H12'])
+    # Iterate through the dictionary and write data
+    for chrom, data in sus_chrom_h12_data.items():
+        for position, h12 in zip(data['positions'], data['h12']):
+            writer.writerow([chrom, position, h12])
 
-# %% Identify windows with H12 values over 0.3
-h12_threshold_mask = np.array(real_sus_h12) > 0.3
-# Extract median genomic positions of these windows
-high_sus_h12_positions = np.array(median_positions)[h12_threshold_mask]
-# Print or use these positions as needed
-print("Susceptible samples - Median genomic positions of windows with H12 > 0.3:", high_sus_h12_positions)
+# %% Plot resistant and non-resistant (similar sample sizes) on the same graph
+# Create a dictionary to hold H12 values and positions for each chromosome, for both resistant and not resistant
+chrom_h12_data = {}
+# Loop through each window
+for i in range(num_windows):
+    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
+    pos = median_positions[i]
+    h12_res = real_res_h12[i]
+    h12_notres = real_notres_h12[i]
+    
+    # Add this data to the corresponding chromosome in the dictionary
+    if chrom not in chrom_h12_data:
+        chrom_h12_data[chrom] = {'positions': [], 'h12_res': [], 'h12_notres': []}
+    chrom_h12_data[chrom]['positions'].append(pos)
+    chrom_h12_data[chrom]['h12_res'].append(h12_res)
+    chrom_h12_data[chrom]['h12_notres'].append(h12_notres)
 
-# %% Plot both resistant and susceptible samples on the same graph
-if len(median_positions) == len(real_res_h12) == len(real_sus_h12):
+# Now plot for each chromosome
+for chrom in chrom_h12_data:
     plt.figure(figsize=(10, 6))
-    plt.title('H12 Values Against Median Genomic Position of SNP Windows')
-
-    # Plotting resistant samples
-    plt.scatter(median_positions, real_res_h12, alpha=0.6, color='blue', label='Resistant')
-
-    # Plotting susceptible samples
-    plt.scatter(median_positions, real_sus_h12, alpha=0.6, color='plum', label='Susceptible')
-
-    plt.xlabel('Median Genomic Position of 1000 SNP Windows')
+    
+    # Plotting resistant and susceptible H12 values
+    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_res'], alpha=0.6, color='blue', label='Resistant')
+    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_notres'], alpha=0.6, color='plum', label='Not resistant')
+    
+    plt.xlabel('Median position of SNP windows across the chromosome')
     plt.ylabel('H12 Value')
+    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.legend()
     plt.show()
-else:
-    print("Mismatch in the lengths of position and H12 arrays. Further debugging needed.")
 
-# %% Plot the not resistant samples and the resistant samples on the same graph
+# %% Extract the h-values above 0.2 with their corresponding SNP window's median genomic position
+# Open a CSV file to write
+with open('h12_above_02_data.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
 
-if len(median_positions) == len(real_notres_h12):
-    plt.figure(figsize=(10, 6))
-    plt.title('Genome Wide Selection Scan: H12 values across the genome')
+    # Write the header
+    writer.writerow(['Chromosome', 'Position', 'H12_Resistant', 'H12_NotResistant'])
 
-    # Plotting resistant samples
-    plt.scatter(median_positions, real_res_h12, alpha=0.6, color='blue', label='Resistant mosquitoes')
+    # Iterate through the dictionary and write data for H12 values above 0.2
+    for chrom, data in chrom_h12_data.items():
+        for pos, h12_res, h12_notres in zip(data['positions'], data['h12_res'], data['h12_notres']):
+            # Check if H12 value is above 0.2 for either resistant or not resistant
+            if h12_res > 0.2 or h12_notres > 0.2:
+                writer.writerow([chrom, pos, h12_res, h12_notres])
 
-    # Plotting resistant samples
-    plt.scatter(median_positions, real_notres_h12, alpha=0.6, color='plum', label='Non-resistant mosquitoes')
+# %% Make a range for each peak that you want to look at genes beneath
+# Write code to automate this section
 
-    plt.xlabel('Median Genomic Position of 1000 SNP Windows')
-    plt.ylabel('H12 Value')
-    plt.legend()
-    plt.show()
-else:
-    print("Mismatch in the lengths of position and H12 arrays. Further debugging needed.")
-
-# %% Identify genomic position of H12 values over 0.2 for the resistant samples
-h12_threshold_mask = np.array(real_notres_h12) > 0.2
-# Extract median genomic positions of these windows
-h12_peaks = np.array(median_positions)[h12_threshold_mask]
-# Print or use these positions as needed
-print("Median genomic positions of windows with H12 > 0.2:", h12_peaks)
-
-# %% What is heighest H12 value genomic position for each peak?
-# peak b is the heighest value of all so can just find the highest value of notres and look for genomic position
-max_real_notres_h12 = np.max(real_notres_h12)
-max_value_peak_b = np.array(real_notres_h12) == max_real_notres_h12
-peak_b_genomic_position = np.array(median_positions)[max_value_peak_b]
-
-# peak a is more complicated
-# need to find the highest res mosquito window position but only for windows lower than 2*1e7
-# It will be one of these: 15130159.  15160300.  15200374. 15291513.5 15483510.5 15521589.5
-# Iterate through the high H12 positions and print both the H12 value and the median genomic position of the SNP window
-
-h12_threshold_mask = np.array(real_notres_h12) > 0.2
-
-print("Median genomic positions and corresponding H12 values for windows with H12 > 0.2:")
-for i in range(len(h12_threshold_mask)):
-    if h12_threshold_mask[i]:
-        print(f"Position: {median_positions[i]}, H12 Value: {real_notres_h12[i]}")
-
-# so peak a is at the highest H12 value out of those positions, 15291513.5
-
-
-# %%
+# Loop through each line of the h12_peaks_locations.txt file
 while IFS=',' read -r chr start end; do
     echo "Processing: $chr from $start to $end" # Debugging line
-    awk -v chr="$chr" -v start="$start" -v end="$end" \
-        '$1 == chr && $4 <= end && $5 >= start' \
+    # Use awk to filter genes within the window from the GFF file
+    awk -v chr="$chr" -v start="$start" -v end="$end" '
+        $1 == chr && $4 <= end && $5 >= start {print $0}' \
         /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.56.chr.gff3 >> h12_peaks_genes.txt
-done < h12_peaks_locations.txt
+done < chromosome_ranges.csv
 
-# %% Find the genomic position of the actual peak and then look at x distance around the peak for genes within the sweep.
-# Or do what i've done and look at genes within the region of the peak (think this is fine)
-
-# AGAP000818 = cytochrome P450, cyp9k1
+# %% Try to do the above in python
 
