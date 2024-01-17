@@ -105,54 +105,70 @@ else:
 # Lucas et al (2023) to identify regions in which swept haplotypes are more frequent in resistant compared to susceptible individuals, they calculated
 # the difference in H12 value between groups, deltaH12.
 
-# %% Calculate h values for resistant and susceptible samples
-real_res_h1, real_res_h12, real_res_123, real_res_h2_h1 = allel.moving_garud_h(h_res_seg, 1000)
 
-real_sus_h1, real_sus_h12, real_sus_h123, real_sus_h2_h1 = allel.moving_garud_h(h_sus_seg, 1000)
+#############################################################
+#############################################################
+#############################################################
+#############################################################
 
-real_notres_h1, real_notres_h12, real_notres_123, real_notres_h2_h1 = allel.moving_garud_h(h_notres_seg, 1000)
+# %% ######## Create Iterations ##########
 
-real_all_h1, real_all_h12, real_all_123, real_all_h2_h1 = allel.moving_garud_h(h_all_seg, 1000)
-                                                                                           
-# %% The above variables are stored as numpy.nd arrays
+# Your list of tuples
+tuples_list = [
+    (0, 1), (2, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, 15),
+    (16, 17), (18, 19), (20, 21), (22, 23), (24, 25), (26, 27), (28, 29),
+    (30, 31), (32, 33), (34, 35), (36, 37), (38, 39), (40, 41), (42, 43), (44, 45)
+]
 
-max_real_res_h12 = np.max(real_res_h12)
-print("Maximum res H12 value:", max_real_res_h12)
+# Number of iterations
+n_iterations = 200
 
-max_real_sus_h12 = np.max(real_sus_h12)
-print("Maximum sus H12 value:", max_real_sus_h12)
+# Initialize a list to store h12 values for each window across all iterations
+iterated_res_h12_values = []
 
-max_real_notres_h12 = np.max(real_notres_h12)
-print("Maximum not resistant H12 value:", max_real_notres_h12)
+# Loop for n_iterations
+for _ in range(n_iterations):
+    # Randomly select 9 tuples
+    selected_tuples = random.sample(tuples_list, 9)
 
-########## Plotting ##########
+    # Extract the column indices from the tuples
+    column_indices = [idx for tup in selected_tuples for idx in tup]
+
+    # Subset the haplotype array
+    subset_res_hap_array = h_res_seg[:, column_indices]
+
+    # Calculate h12 for the subsetted hap array
+    _, iterated_real_res_h12, _, _ = allel.moving_garud_h(subset_res_hap_array, 1000)
+
+    # Store the h12 value for each window in the list
+    iterated_res_h12_values.append(iterated_real_res_h12)
+
+# Convert the list to a numpy array
+iterated_res_h12_values_array = np.array(iterated_res_h12_values)
+
+# Calculate the mean of the h12 values for each window
+mean_res_h12_per_window = np.mean(iterated_res_h12_values_array, axis=0)
+
+# mean_h12_per_window now contains the mean h12 value for each window
 
 # %% Check the number of windows for each array 
-num_windows_res = real_res_h12.shape[0]
-num_windows_sus = real_sus_h12.shape[0]
-num_windows_notres = real_notres_h12.shape[0]
-
+num_windows_res = mean_res_h12_per_window.shape[0]
 print("Number of windows for resistant samples:", num_windows_res)
-print("Number of windows for not resistant:", num_windows_notres)
-print("Number of windows for susceptible:", num_windows_sus)
 
 # %% The h12 values are calculated in windows of 1000 SNPs. Each SNP has a POS value which is in the POS array.
 window_size = 1000  # Define the window size as 1000 SNPs
 num_windows = len(pos_filtered) // window_size  # Calculate the number of windows in total
 
-# %% Calculate the median genomic position for each window
+# %% Plot. Calculate the median genomic position for each window
 # for each iteration (i) a segment of pos_res_seg is processed
 median_positions = [np.median(pos_filtered[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
 
-# %% Plot h12 values for each chromosome
-# Create a dictionary to hold H12 values and positions for each chromosome
-# Resistant samples
 res_h12_chrom = {}
 # Loop through each window
 for i in range(num_windows):
     chrom = chrom_filtered[i * window_size]  # Assumes the chromosome for all SNPs in a single window is consistent 
     pos = median_positions[i]
-    h12 = real_res_h12[i]
+    h12 = mean_res_h12_per_window[i]
     # Add this data to the corresponding chromosome in the dictionary
     if chrom not in res_h12_chrom:
         res_h12_chrom[chrom] = {'positions': [], 'h12': []}
@@ -163,7 +179,7 @@ for chrom in res_h12_chrom:
     plt.figure(figsize=(10, 6))
     plt.scatter(res_h12_chrom[chrom]['positions'], res_h12_chrom[chrom]['h12'], alpha=0.6)
     plt.xlabel('Median position of SNP windows across the chromosome')
-    plt.ylabel('H12 Value in Resistant Samples')
+    plt.ylabel('Mean H12 Value in Resistant Samples')
     plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.show()
 # Save the resistant samples dictionary which contains chromsome, positions and h12 value.
@@ -176,97 +192,88 @@ with open('res_h12_chrom.csv', 'w', newline='') as file:
         for position, h12 in zip(data['positions'], data['h12']):
             writer.writerow([chrom, position, h12])
 
-# %% Not-resistant plots per chromosome
-notres_chrom_h12_data = {}
-# Loop through each window
-for i in range(num_windows):
-    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
-    pos = median_positions[i]
-    h12 = real_notres_h12[i]  
-    # Add this data to the corresponding chromosome in the dictionary
-    if chrom not in notres_chrom_h12_data:
-        notres_chrom_h12_data[chrom] = {'positions': [], 'h12': []}
-    notres_chrom_h12_data[chrom]['positions'].append(pos)
-    notres_chrom_h12_data[chrom]['h12'].append(h12)
-# Now plot for each chromosome
-for chrom in notres_chrom_h12_data:
-    plt.figure(figsize=(10, 6))
-    plt.scatter(notres_chrom_h12_data[chrom]['positions'], notres_chrom_h12_data[chrom]['h12'], alpha=0.6)
-    plt.xlabel('Median position of SNP windows across the Chromosome')
-    plt.ylabel('H12 Value in Not-Resistant Samples')
-    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
-    plt.show()
-# Save the not-resistant samples dictionary which contains chromsome, positions and h12 value.
-import csv
-with open('notres_h12_chrom.csv', 'w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['Chromosome', 'Position', 'H12'])
-    # Iterate through the dictionary and write data
-    for chrom, data in notres_chrom_h12_data.items():
-        for position, h12 in zip(data['positions'], data['h12']):
-            writer.writerow([chrom, position, h12])
 
-# %% Susceptible only per chromosome
-sus_chrom_h12_data = {}
+# %% ############# Do the same for susceptible samples #################
+
+# Your list of tuples
+tuples_list = [
+    (0, 1), (2, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, 15),
+    (16, 17), (18, 19)
+]
+
+# Number of iterations
+n_iterations = 200
+
+# Initialize a list to store h12 values for each window across all iterations
+iterated_sus_h12_values = []
+
+# Loop for n_iterations
+for _ in range(n_iterations):
+    # Randomly select 9 tuples
+    selected_tuples = random.sample(tuples_list, 9)
+
+    # Extract the column indices from the tuples
+    column_indices = [idx for tup in selected_tuples for idx in tup]
+
+    # Subset the haplotype array
+    subset_sus_hap_array = h_res_seg[:, column_indices]
+
+    # Calculate h12 for the subsetted hap array
+    _, iterated_real_sus_h12, _, _ = allel.moving_garud_h(subset_sus_hap_array, 1000)
+
+    # Store the h12 value for each window in the list
+    iterated_sus_h12_values.append(iterated_real_sus_h12)
+
+# Convert the list to a numpy array
+iterated_sus_h12_values_array = np.array(iterated_sus_h12_values)
+
+# Calculate the mean of the h12 values for each window
+mean_sus_h12_per_window = np.mean(iterated_sus_h12_values_array, axis=0)
+
+# mean_h12_per_window now contains the mean h12 value for each window
+
+# %% Plot: Check the number of windows for each array 
+num_windows_sus = mean_sus_h12_per_window.shape[0]
+print("Number of windows for susceptible samples:", num_windows_sus)
+
+# %% The h12 values are calculated in windows of 1000 SNPs. Each SNP has a POS value which is in the POS array.
+window_size = 1000  # Define the window size as 1000 SNPs
+num_windows = len(pos_filtered) // window_size  # Calculate the number of windows in total
+
+# %% Calculate the median genomic position for each window
+# for each iteration (i) a segment of pos_res_seg is processed
+median_positions = [np.median(pos_filtered[i * window_size: (i + 1) * window_size]) for i in range(num_windows)]
+
+sus_h12_chrom = {}
 # Loop through each window
 for i in range(num_windows):
-    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
+    chrom = chrom_filtered[i * window_size]  # Assumes the chromosome for all SNPs in a single window is consistent 
     pos = median_positions[i]
-    h12 = real_sus_h12[i]  
+    h12 = mean_sus_h12_per_window[i]
     # Add this data to the corresponding chromosome in the dictionary
-    if chrom not in sus_chrom_h12_data:
-        sus_chrom_h12_data[chrom] = {'positions': [], 'h12': []}
-    sus_chrom_h12_data[chrom]['positions'].append(pos)
-    sus_chrom_h12_data[chrom]['h12'].append(h12)
+    if chrom not in sus_h12_chrom:
+        sus_h12_chrom[chrom] = {'positions': [], 'h12': []}
+    sus_h12_chrom[chrom]['positions'].append(pos)
+    sus_h12_chrom[chrom]['h12'].append(h12)
 # Now plot for each chromosome
-for chrom in sus_chrom_h12_data:
+for chrom in sus_h12_chrom:
     plt.figure(figsize=(10, 6))
-    plt.scatter(sus_chrom_h12_data[chrom]['positions'], sus_chrom_h12_data[chrom]['h12'], alpha=0.6)
-    plt.xlabel('Median position of SNP windows across the Chromosome')
-    plt.ylabel('H12 Value in Susceptible Samples')
+    plt.scatter(sus_h12_chrom[chrom]['positions'], sus_h12_chrom[chrom]['h12'], alpha=0.6)
+    plt.xlabel('Median position of SNP windows across the chromosome')
+    plt.ylabel('Mean H12 Value in Susceptible Samples')
     plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.show()
-# Save the not-resistant samples dictionary which contains chromsome, positions and h12 value.
+# Save the resistant samples dictionary which contains chromsome, positions and h12 value.
 import csv
 with open('sus_h12_chrom.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(['Chromosome', 'Position', 'H12'])
     # Iterate through the dictionary and write data
-    for chrom, data in sus_chrom_h12_data.items():
+    for chrom, data in res_h12_chrom.items():
         for position, h12 in zip(data['positions'], data['h12']):
             writer.writerow([chrom, position, h12])
 
-# %% Plot resistant and non-resistant (similar sample sizes) on the same graph
-# Create a dictionary to hold H12 values and positions for each chromosome, for both resistant and not resistant
-chrom_h12_data = {}
-# Loop through each window
-for i in range(num_windows):
-    chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
-    pos = median_positions[i]
-    h12_res = real_res_h12[i]
-    h12_notres = real_notres_h12[i]
-    
-    # Add this data to the corresponding chromosome in the dictionary
-    if chrom not in chrom_h12_data:
-        chrom_h12_data[chrom] = {'positions': [], 'h12_res': [], 'h12_notres': []}
-    chrom_h12_data[chrom]['positions'].append(pos)
-    chrom_h12_data[chrom]['h12_res'].append(h12_res)
-    chrom_h12_data[chrom]['h12_notres'].append(h12_notres)
-
-# Now plot for each chromosome
-for chrom in chrom_h12_data:
-    plt.figure(figsize=(10, 6))
-    
-    # Plotting resistant and susceptible H12 values
-    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_res'], alpha=0.6, color='blue', label='Resistant')
-    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_notres'], alpha=0.6, color='plum', label='Not resistant')
-    
-    plt.xlabel('Median position of SNP windows across the chromosome')
-    plt.ylabel('H12 Value')
-    plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
-    plt.legend()
-    plt.show()
-
+######## Plot them on the same graph #########
 
 # %% Plot resistant and susceptible (similar sample sizes) on the same graph
 # Create a dictionary to hold H12 values and positions for each chromosome, for both resistant and not resistant
@@ -275,8 +282,8 @@ chrom_h12_data = {}
 for i in range(num_windows):
     chrom = chrom_filtered[i * window_size]  # Assuming each window is from the same chromosome
     pos = median_positions[i]
-    h12_res = real_res_h12[i]
-    h12_sus = real_sus_h12[i]
+    h12_res = mean_res_h12_per_window[i]
+    h12_sus = mean_sus_h12_per_window[i]
     
     # Add this data to the corresponding chromosome in the dictionary
     if chrom not in chrom_h12_data:
@@ -290,32 +297,38 @@ for chrom in chrom_h12_data:
     plt.figure(figsize=(10, 6))
     
     # Plotting resistant and susceptible H12 values
-    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_res'], alpha=0.6, color='blue', label='Resistant')
+    plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_res'], alpha=0.6, color='blue', label='Resistant')    
     plt.scatter(chrom_h12_data[chrom]['positions'], chrom_h12_data[chrom]['h12_sus'], alpha=0.6, color='plum', label='Susceptible')
-    
     plt.xlabel('Median position of SNP windows across the chromosome')
-    plt.ylabel('H12 Value')
+    plt.ylabel('Mean H12 Value')
     plt.title(f'Genome Wide Selection Scan of H12 Values across Chromosome {chrom}')
     plt.legend()
     plt.show()
 
+
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+
 # %% Extract the h-values above 0.2 with their corresponding SNP window's median genomic position
 # Open a CSV file to write
-with open('h12_above_02_data.csv', 'w', newline='') as file:
+with open('iterated_mean_h12_above_02_data.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
     # Write the header
-    writer.writerow(['Chromosome', 'Position', 'H12_Resistant', 'H12_NotResistant'])
+    writer.writerow(['Chromosome', 'Position', 'mean_h12_Resistant', 'mean_h12_susceptible'])
 
     # Iterate through the dictionary and write data for H12 values above 0.2
     for chrom, data in chrom_h12_data.items():
-        for pos, h12_res, h12_notres in zip(data['positions'], data['h12_res'], data['h12_notres']):
+        for pos, h12_res, h12_sus in zip(data['positions'], data['h12_res'], data['h12_sus']):
             # Check if H12 value is above 0.2 for either resistant or not resistant
-            if h12_res > 0.2 or h12_notres > 0.2:
-                writer.writerow([chrom, pos, h12_res, h12_notres])
+            if h12_res > 0.2 or h12_sus > 0.2:
+                writer.writerow([chrom, pos, h12_res, h12_sus])
 
 # %% Make a range for each peak that you want to look at genes beneath
 # Write code to automate this section
+# This section should create the iterated_chromosome_ranges.csv that is used in the next section
 
 # Loop through each line of the h12_peaks_locations.txt file
 while IFS=',' read -r chr start end; do
@@ -323,8 +336,8 @@ while IFS=',' read -r chr start end; do
     # Use awk to filter genes within the window from the GFF file
     awk -v chr="$chr" -v start="$start" -v end="$end" '
         $1 == chr && $4 <= end && $5 >= start {print $0}' \
-        /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.56.chr.gff3 >> h12_peaks_genes.txt
-done < chromosome_ranges.csv
+        /mnt/storage11/sophie/reference_genomes/A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.56.chr.gff3 >> iterated_h12_peaks_genes.txt
+done < iterated_chromosome_ranges.csv
 
 # %% Try to do the above in python
 
