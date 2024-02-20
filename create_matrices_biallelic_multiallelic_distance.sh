@@ -1,16 +1,18 @@
 ## Convert the filtered vcf to matrix
 ## to make biallelic matrix use .bi.GT.
 
-python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2matrix.py --vcf mt_melas_plus_global_subset_filtered.vcf.gz --no-iupacgt --threads 6
+# python /mnt/storage11/sophie/fastq2matrix/scripts/vcf2matrix.py --vcf mt_melas_plus_global_subset_filtered.vcf.gz --no-iupacgt --threads 6
 
 ## to make multiallelic matrix use .GT.
 # not making multiallelic matrix for anopheles, have already split multiallelic sites to be biallelic
 
-## Creating a distance matrix for PCA
-plink --vcf F_MISSING_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz --distance square --double-id --allow-extra-chr --out 2019_melas_dist_m --threads 6
+## rename mitochondira within the vcf from Mt to anop_mito, otherwise plink removes the variants
+vim chrom_map.txt 
+Mt  anop_mito
+bcftools annotate --rename-chrs chrom_map.txt FMISSING_MAF_AC0_DP5_GQ20_gatk_filtered_miss_40_mac_bi_snps_melas_2019_plusglobal.2023_07_25.genotyped.ann.vcf.gz -Oz -o pca_filteredvcf_renamedmt_melas2019plusglobal
 
 ## Create a distance matrix for PCA with melas plus global samples
-plink --vcf F_MISSING_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_melas_2019_plusglobal.2023_07_05.genotyped.vcf.gz --distance square --double-id --allow-extra-chr --out 2019_melas_plus_global_dist_m --threads 6
+plink --vcf pca_filteredvcf_renamedmt_melas2019plusglobal.vcf.gz --distance square --double-id --out wholgenome_melas_plusglobal --threads 6 --allow-extra-chr
 
 ## using just the mitochondria
 ## create mitochondria only vcf using bcftools, then use plink to make distance matrix
