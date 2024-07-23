@@ -1,12 +1,20 @@
 ######################## PCA FOR GENES OF INTEREST #########################
 
-## Make PCA for just genes of interest
-## Use bcftools to subset the filtered vcf just for the genes of interest and make a PCA of that
+## Take unfilered vcf for gambiae-gambiae and melas-gambiae, combine, then filter, then use bcftools to subset for gene of interest.
+## source unfilered VCFs, both of these vcfs aligned to A_gam_P4_ensembl/Anopheles_gambiae.AgamP4.dna.toplevel.fa
 
-# VGSC AgamP4_2L:2358158 to 2431617
-# subset VCF
+/mnt/storage11/sophie/bijagos_mosq_wgs/malariagen_wgs/gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz
+/mnt/storage11/sophie/bijagos_mosq_wgs/2019_melas_fq2vcf_gambiae_aligned/genomics_database_melas2019plusglobal/genomics_database_melas2019plusglobal_vcf/melas_2019_plusglobal.2023_07_25.genotyped.vcf.gz
+
+## merge VCFs
+
+bcftools merge gambiae_malariagen_GB_GM-ABC_Bijagos_merged.vcf.gz melas_2019_plusglobal.2023_07_25.genotyped.vcf.gz -Oz -o bijagos_gambiae_melas_malariagen_GB_GM-ABC_alignedtoAgamP4_merged.vcf.gz
+
+# subet unfiiltered VCF AgamP4_Mt:2358158 to 2431617
 
 bcftools view -r 2L:2358158-2431617 F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz -Oz -o VGSC_only_F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.vcf.gz
+
+# filter
 
 
 ## Shift + Options + R to open a new terminal

@@ -131,13 +131,6 @@ h_sus_seg
 # Calculate in 1000bp windows, look at the difference in H12
 # Calculate for resistant samples
 
-# A.miles:
-# To calibrate the window sizes I ran the H12 scans with a range of different window sizes, and chose
-# the smallest window size for which the mean value of H1 over all windows was below
-# 0.01.
-# Lucas et al (2023) to identify regions in which swept haplotypes are more frequent in resistant compared to susceptible individuals, they calculated
-# the different in H12 value between groups, deltaH12.
-
 h1, h12, h123, h2_h1 = allel.moving_garud_h(h_res_seg, 1000)
 
 # Calculate for susceptible samples

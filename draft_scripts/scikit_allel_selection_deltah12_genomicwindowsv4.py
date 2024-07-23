@@ -314,11 +314,6 @@ h12_windows_res = compute_h12_for_windows(haplotype_data_windows_res)
 # %% H12 was calculated using phased biallelic SNPs in 1000 bp windows along the genome
 # SNP windows, using the garuds_h function in scikit-allel. 200 permutations in which penhotype labels randomly permuted and value recalculated?
 # Calculate in 1000bp windows, look at the difference in H12
-# A.miles:
-# To calibrate the window sizes I ran the H12 scans with a range of different window sizes, and chose
-# the smallest window size for which the mean value of H1 over all windows was below 0.01.
-# Lucas et al (2023) to identify regions in which swept haplotypes are more frequent in resistant compared to susceptible individuals, they calculated
-# the difference in H12 value between groups, deltaH12.
 
 # %% Calculate h12 based on genomic windows of 1000bp
 

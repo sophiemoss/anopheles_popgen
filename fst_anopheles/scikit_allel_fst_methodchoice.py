@@ -17,7 +17,7 @@ import pandas as pd
 import allel; print('scikit-allel', allel.__version__)
 
 # %% Set wd
-os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2022_gambiae_fq2vcf_agamP4/gambiae_nov2022_genomicdb/gambiae_nov2022_genotypedvcf/gambiae_nov2022_combinedvcf_filteringsteps')
+os.chdir('/mnt/storage11/sophie/bijagos_mosq_wgs/2019_melas_fq2vcf_gambiae_aligned/genomics_database_melas2019plusglobal/genomics_database_melas2019plusglobal_vcf/melas_2019_plusglobal_filtering')
 os.getcwd()
 
 # %% CONVERT FILTERED UNPHASED VCF TO ZARR FILE
@@ -25,7 +25,7 @@ os.getcwd()
 # allel.vcf_to_zarr('example.vcf', 'example.zarr', fields='*', overwrite=True)
 # print('zarr', zarr.__version__, 'numcodecs', numcodecs.__version__)
 
-callset = zarr.open('F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_nov2022.2023_07_05.genotyped.zarr', mode='r')
+callset = zarr.open('2019melasglobal_finalfiltered_gambiaealigned_phased.zarr', mode='r')
 # callset.tree(expand=True)
 
 # %% choose how much of genome to look at
@@ -34,7 +34,7 @@ callset = zarr.open('F_MISSING_MAF_AC0_DP5_GQ20_gatk_miss40_mac_bi_snps_gambiae_
 # chrom_all = callset['variants/CHROM'][:]
 # load variant positions for specific chromosome
 
-chromosome_filter = callset['variants/CHROM'][:] == '3L'
+chromosome_filter = callset['variants/CHROM'][:] == '2L'
 pos_all = callset['variants/POS'][np.where(chromosome_filter)[0]] 
 
 # %%  CONVERT ZARR FILE TO GENOTYPE ARRAY
@@ -46,21 +46,21 @@ pos_all = callset['variants/POS'][np.where(chromosome_filter)[0]]
 genotype_all = allel.GenotypeChunkedArray(callset['calldata/GT'][np.where(chromosome_filter)[0]])
 
 # %%  IMPORT METADATA
-df_samples= pd.read_csv('metadata_gambiae_2022.csv',sep=',',usecols=['sample','year','country','island','phenotype'])
+df_samples= pd.read_csv('metadata_melasplusglobal.csv',sep=',',usecols=['sample','year','country','island','pcagroup'])
 df_samples.head()
-df_samples.groupby(by=['phenotype']).count()
+df_samples.groupby(by=['pcagroup']).count()
 
 # %%  choose sample populations to work with
-pop1 = 'resistant'
-pop2 = 'susceptible'
-n_samples_pop1 = np.count_nonzero(df_samples.phenotype == pop1)
-n_samples_pop2 = np.count_nonzero(df_samples.phenotype == pop2)
+pop1 = 'group1'
+pop2 = 'group2'
+n_samples_pop1 = np.count_nonzero(df_samples.pcagroup == pop1)
+n_samples_pop2 = np.count_nonzero(df_samples.pcagroup == pop2)
 print(pop1, n_samples_pop1, pop2, n_samples_pop2)
 
 # %% dictonary mapping population names to sample indices
 subpops = {
-    pop1: df_samples[df_samples.phenotype == pop1].index,
-    pop2: df_samples[df_samples.phenotype == pop2].index,
+    pop1: df_samples[df_samples.pcagroup == pop1].index,
+    pop2: df_samples[df_samples.pcagroup == pop2].index,
 }
 
 # %% get allele counts
@@ -86,13 +86,13 @@ genotype
 
 ##### Comparing Fst estimators ####
 # %% ONE: calculate Weir and Cockerham Fst without using windows
-# sample indices for population 1
-# pop1_idx = subpops[pop1]
-# sample indices for population 2
-# pop2_idx = subpops[pop2]
-# a, b, c = allel.weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx], max_allele=1)
-# snp_fst_wc_no_windows = (a / (a + b + c))[:, 0]
-# snp_fst_wc_no_windows
+#sample indices for population 1
+pop1_idx = subpops[pop1]
+#sample indices for population 2
+pop2_idx = subpops[pop2]
+a, b, c = allel.weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx], max_allele=1)
+snp_fst_wc_no_windows = (a / (a + b + c))[:, 0]
+snp_fst_wc_no_windows
 
 
 # %% TWO: calculate Weir and Cockerham Fst using windows
@@ -107,20 +107,20 @@ snp_fst_wc_windowed
 
 
 # %% THREE: calculate Hudson Fst, no windows
-# num, den = allel.hudson_fst(ac1, ac2)
-# snp_fst_hudson = num / den
-# snp_fst_hudson
+num, den = allel.hudson_fst(ac1, ac2)
+snp_fst_hudson = num / den
+snp_fst_hudson
 
 # %% Compare Fst values between Weir & Cockerham and Hudson, with no windows
 
-# fig, ax = plt.subplots(figsize=(5, 5))
-# sns.despine(ax=ax, offset=5)
-# ax.plot(snp_fst_hudson, snp_fst_wc_no_windows, color='k', marker='.', linestyle=' ')
-# ax.set_xlim(0, 1)
-# ax.set_ylim(0, 1)
-# ax.set_xlabel('Hudson $F_{ST}$')
-# ax.set_ylabel('Weir & Cockerham $F_{ST}$')
-# ax.set_title('%s (%s) vs %s (%s), SNP $F_{ST}$' % (pop1, n_samples_pop1, pop2, n_samples_pop2));
+fig, ax = plt.subplots(figsize=(5, 5))
+sns.despine(ax=ax, offset=5)
+ax.plot(snp_fst_hudson, snp_fst_wc_no_windows, color='k', marker='.', linestyle=' ')
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_xlabel('Hudson $F_{ST}$')
+ax.set_ylabel('Weir & Cockerham $F_{ST}$')
+ax.set_title('%s (%s) vs %s (%s), SNP $F_{ST}$' % (pop1, n_samples_pop1, pop2, n_samples_pop2));
 
 # there are unequal sample sizes so the Fst estimators do appear different, not great. 
 # could use Hudson instead but W&C is standard.
@@ -128,13 +128,12 @@ snp_fst_wc_windowed
 # %%
 ### Compute chromosome-wide average Fst with standard errors approximated via a block-jackknife, to compare W&C and Hudson
 
-# Weir & Cockerham
-# fst_wc, se_wc, vb_wc, _ = allel.blockwise_weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx],                                                                    blen=2000, max_allele=1)
-# print('%.04f +/- %.04f (Weir & Cockerham)' % (fst_wc, se_wc))
-
-# Hudson
-# fst_hudson, se_hudson, vb_hudson, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
-# print('%.04f +/- %.04f (Hudson)' % (fst_hudson, se_hudson))
+#Weir & Cockerham
+fst_wc, se_wc, vb_wc, _ = allel.blockwise_weir_cockerham_fst(genotype, subpops=[pop1_idx, pop2_idx],                                                                    blen=2000, max_allele=1)
+print('%.04f +/- %.04f (Weir & Cockerham)' % (fst_wc, se_wc))
+#Hudson
+fst_hudson, se_hudson, vb_hudson, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
+print('%.04f +/- %.04f (Hudson)' % (fst_hudson, se_hudson))
 
 # %% SNP ascertainment - run this test to see which SNPs to include in analysis
 # Bhatia et al recommend ascertaining SNPs by choosing SNPs that are segregating in a third outgroup population
@@ -144,28 +143,28 @@ snp_fst_wc_windowed
 # 3) choose SNPs segregating in either population
 # 4) choose SNPs segregating in both populations
 #
-#def compute_fst(ac1, ac2, scheme):
-#    
-#    if scheme == 'first':
-#        loc_asc = ac1.is_segregating()
-#    elif scheme == 'second':
-#        loc_asc = ac2.is_segregating()
-#    elif scheme == 'either':
-#        loc_asc = ac1.is_segregating() | ac2.is_segregating()
-#    elif scheme == 'both':
-#        loc_asc = ac1.is_segregating() & ac2.is_segregating()    
-#    n_snps = np.count_nonzero(loc_asc)
-#    
-#    ac1 = ac1.compress(loc_asc, axis=0)
-#    ac2 = ac2.compress(loc_asc, axis=0)
-#    
-#    fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
-#    
-#    print('%.04f +/- %.04f (using %s SNPs segregating in %s population)' % (fst, se, n_snps, scheme))
-#
-#for scheme in 'first', 'second', 'either', 'both':
-#    compute_fst(ac1, ac2, scheme)
-#
+def compute_fst(ac1, ac2, scheme):
+    
+    if scheme == 'first':
+        loc_asc = ac1.is_segregating()
+    elif scheme == 'second':
+        loc_asc = ac2.is_segregating()
+    elif scheme == 'either':
+        loc_asc = ac1.is_segregating() | ac2.is_segregating()
+    elif scheme == 'both':
+        loc_asc = ac1.is_segregating() & ac2.is_segregating()    
+    n_snps = np.count_nonzero(loc_asc)
+    
+    ac1 = ac1.compress(loc_asc, axis=0)
+    ac2 = ac2.compress(loc_asc, axis=0)
+    
+    fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=100000)
+    
+    print('%.04f +/- %.04f (using %s SNPs segregating in %s population)' % (fst, se, n_snps, scheme))
+
+for scheme in 'first', 'second', 'either', 'both':
+    compute_fst(ac1, ac2, scheme)
+
 # use SNPs segregating in both populations (or could change this to use SNPs segregating in the control population)
 
 # %% Calculate Fst using W&C, windowed, with SNPs that are segregating in both populations

@@ -30,8 +30,8 @@ rownames(dist_m) <- desc$V1
 
 # PCA #
 cmd <- cmdscale(dist_m, k = 10, eig = TRUE, x.ret = TRUE) # Multidimensional Scaling - might take a while
-# saveRDS(cmd, paste0(prefix, ".dist.rds") # save to RDS format
-#cmd <- readRDS(file.path(workdir, paste0(prefix, ".dist.rds"))
+saveRDS(cmd, paste0(prefix, ".dist.rds")) # save to RDS format
+cmd <- readRDS(file.path(workdir, paste0(prefix, ".dist.rds")))
 vars <- calc_variance_explained(cmd) # Calculations of variance explained
 
 # Overlay region, country info
@@ -41,10 +41,10 @@ df$island <- gsub("_", " ", desc$island)
 df$sample <- rownames(matrix)
 colnames(df) <- gsub("V", "PC", colnames(df))
 
-color_by <- "country" # specify if coloured by region or country
+color_by <- "country" # specify if coloured by country or island
 
 # Graph with PC1 an PC2
-png("mito_only_ggplot_PCA_melas_plus_global.png") # Save to PNG file
+png("wholegenome_ggplot_PCA_melas_plus_global.png") # Save to PNG file
 ggplot(data = df, aes(x = PC1, y = PC2,
        color = !!sym(color_by))) +
     geom_point() +

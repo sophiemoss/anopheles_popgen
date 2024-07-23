@@ -99,12 +99,6 @@ else:
 
 # %% H12 was calculated using phased biallelic SNPs in 1000 bp windows along the genome
 # SNP windows, using the garuds_h function in scikit-allel.
-# A.miles:
-# To calibrate the window sizes I ran the H12 scans with a range of different window sizes, and chose
-# the smallest window size for which the mean value of H1 over all windows was below 0.01.
-# Lucas et al (2023) to identify regions in which swept haplotypes are more frequent in resistant compared to susceptible individuals, they calculated
-# the difference in H12 value between groups, deltaH12.
-
 # %% Calculate h values for resistant and susceptible samples
 real_res_h1, real_res_h12, real_res_123, real_res_h2_h1 = allel.moving_garud_h(h_res_seg, 1000)
 

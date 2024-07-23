@@ -25,6 +25,8 @@ with open('samples.txt', 'r') as file:
 # %%  Initialize an empty dictionary to hold the results
 results_dict = {}
 
+print("Iterating over dataframe")
+
 # %%  Iterate over the grouped DataFrame
 for dup_id, group in grouped_discordant_df:
     results_dict[f"{dup_id}_Pos_Range_Start"] = {}
@@ -38,25 +40,27 @@ for dup_id, group in grouped_discordant_df:
         # Load the clipping data for the sample
         clipping_df = pd.read_csv(f'{sample}.Clipping._Normalised.csv')
 
-        # Sum the NormalisedClipping for the start range
+        # Average the NormalisedClipping for the start range
         start_group = group[group['Type'] == 'Start']
         if not start_group.empty:
             start_contig = start_group['Contig'].values[0]
             start_range = start_group[['Pos_Range_Start', 'Pos_Range_End']].values[0]
-            start_sum = clipping_df[(clipping_df['Contig'] == start_contig) &
+            start_avg = clipping_df[(clipping_df['Contig'] == start_contig) &
                                     (clipping_df['ClipPos'] >= start_range[0]) &
-                                    (clipping_df['ClipPos'] <= start_range[1])]['NormalisedClipping'].sum()
-            results_dict[f"{dup_id}_Pos_Range_Start"][sample] = start_sum
+                                    (clipping_df['ClipPos'] <= start_range[1])]['NormalisedClipping'].mean()
+            results_dict[f"{dup_id}_Pos_Range_Start"][sample] = start_avg
 
-        # Sum the NormalisedClipping for the end range
+        # Average the NormalisedClipping for the end range
         end_group = group[group['Type'] == 'End']
         if not end_group.empty:
             end_contig = end_group['Contig'].values[0]
             end_range = end_group[['Pos_Range_Start', 'Pos_Range_End']].values[0]
-            end_sum = clipping_df[(clipping_df['Contig'] == end_contig) &
+            end_avg = clipping_df[(clipping_df['Contig'] == end_contig) &
                                   (clipping_df['ClipPos'] >= end_range[0]) &
-                                  (clipping_df['ClipPos'] <= end_range[1])]['NormalisedClipping'].sum()
-            results_dict[f"{dup_id}_Pos_Range_End"][sample] = end_sum
+                                  (clipping_df['ClipPos'] <= end_range[1])]['NormalisedClipping'].mean()
+            results_dict[f"{dup_id}_Pos_Range_End"][sample] = end_avg
+
+print("Collected all results, now converting to dataframe")
 
 # %%  Convert the results dictionary to a DataFrame
 results_df = pd.DataFrame.from_dict(results_dict, orient='index')
