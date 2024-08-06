@@ -406,26 +406,3 @@ for window, cluster in df[['Significant Window', 'Haplotype Cluster']].drop_dupl
     file_name = f'haplotype_cluster_{chromosome}_{window}_{cluster}_phenotype_table.csv'
     # Save to CSV
     phenotype_data_per_haplotype_cluster.to_csv(file_name, index=False)
-
-# %% Run a GLM (logistic regression) with logit link function for each haplotype cluster
-
-# Loop over each file in the directory
-#for filename in os.listdir(working_directory):
-#    if filename.endswith('_phenotype_table.csv'):
-#        # Load the CSV file into a DataFrame
-#        filepath = os.path.join(working_directory, filename)
-#        df = pd.read_csv(filepath)
-#        # Convert phenotype to a binary variable
-#        df['response'] = df['phenotype'].map({'resistant': 1, 'susceptible': 0})
-#        # Define the model formula
-#        formula = 'response ~ score'
-#        # Fit the GLM model with a logit link function
-#        model = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit()
-#        # Prepare the output filename
-#        output_filename = f'{filename.replace(".csv", "")}_glm_summary.txt'
-#        # Save the model summary to a text file
-#        with open(output_filename, 'w') as file:
-#            file.write(model.summary().as_text())
-#        print(f"GLM summary for {filename} saved to {output_filename}")
-#
-# %%
