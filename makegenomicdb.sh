@@ -12,8 +12,3 @@ ls *.g.vcf.gz | sed 's/.g.vcf.gz//' > fastq2vcfsamples.txt
 merge_vcfs.py genotype --ref genomic.fasta --prefix gambiae_bijagos_2022 > mergevcf_log.txt 2>&1
 
 # resulting vcf is called gambiae_bijagos_2022.2023_07_25.genotyped.vcf.gz
-
-# concerned that this genotyping does not use a set of validated variants like I had for plasmodium
-# this has a genotyping pipeline:
-# https://github.com/malariagen/pipelines/blob/v0.0.4/docs/specs/snp-genotyping-vector.md
-# pipeline being sent from MalariaGEN.
