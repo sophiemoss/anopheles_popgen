@@ -4,7 +4,6 @@
 ##### directory: /mnt/storage11/sophie/bijagos_mosq_wgs/2019_melas_fq2vcf_gambiae_aligned/soft_clipping #####
 
 
-
 # %% create samples.txt file
 # Create a list of sample names
 # ls *.Clipping._Normalised.csv | sed 's/.Clipping._Normalised.csv//' > samples.txt
