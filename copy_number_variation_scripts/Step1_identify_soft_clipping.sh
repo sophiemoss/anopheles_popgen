@@ -56,12 +56,12 @@ while read -r bamfile; do
 
 done < bam_files.txt
 
-# Run the clip_identifier python script using loop
+# Run the clip_identifier python script using loop_file 
 
 ls *.sam | sed 's/.sam//' > samples.txt
 
 while read -r sample; do
     # Run the ClipIdentifier.py script
-    python /mnt/storage11/sophie/gitrepos/anopheles_popgen/copy_number_variation_scripts/ClipIdentifier.py "$sample.sam" "$sample.coverage"   
+    python /mnt/storage11/sophie/gitrepos/anopheles_gambiae/copy_number_variation_scripts/ClipIdentifier.py "$sample.sam" "$sample.coverage"   
     echo "Processed $sample with ClipIdentifier.py"
 done < samples.txt
