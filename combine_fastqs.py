@@ -5,7 +5,7 @@
 ## To run this script, use:
 ## python ~/combine_fastqs.py --dir ../ --r1 "(bu1035).+_1.fastq.gz" --r2 "(bu1035).+_2.fastq.gz"
 ## replace bu1035 with the sample of interest that needs combining
-## python /mnt/storage11/sophie/gitrepos/anophelesmelas_popgen/combine_fastqs.py --dir /mnt/storage11/sophie/bijagos_mosq_wgs/globalmelasfq2vcf/SAMN01760622_multipleSRRs --r1 "(SAMN01760622).+_1.fastq.gz" --r2 "(SAMN01760622).+_2.fastq.gz"
+## python /mnt/storage11/sophie/gitrepos/anopheles_gambiae/combine_fastqs.py --dir /mnt/storage11/sophie/david/raw_amplicon_data --r1 "(DP097-D0_S341).+R1_001.fastq.gz" --r2 "(DP097-D0_S341).+R2_001.fastq.gz"
 
 
 
